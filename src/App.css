@@ -1,0 +1,137 @@
+.app-layout {
+  min-height: 100vh;
+  background: #f5f7fa;
+}
+
+.app-header {
+  background: #ffffff !important;
+  padding: 0 32px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #dadce0;
+  box-shadow: 0 1px 6px rgba(32, 33, 36, 0.1);
+}
+
+.app-content {
+  background: #f5f7fa;
+  height: calc(100vh - 64px);
+  padding: 0;
+}
+
+.header-card {
+  background: #ffffff;
+  border-bottom: 1px solid #dadce0;
+  box-shadow: 0 1px 6px rgba(32, 33, 36, 0.1);
+}
+
+.logo h2 {
+  color: #202124 !important;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* Professional Ant Design Overrides */
+.ant-tabs-tab {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  margin-right: 24px !important;
+  transition: all 0.2s ease !important;
+}
+
+.ant-tabs-tab:hover {
+  background: rgba(26, 115, 232, 0.05) !important;
+}
+
+.ant-tabs-tab-active {
+  background: transparent !important;
+  font-weight: 500 !important;
+}
+
+.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: #1a73e8 !important;
+  font-weight: 500 !important;
+}
+
+.ant-tabs-content-holder {
+  background: #f5f7fa;
+}
+
+.ant-tabs-ink-bar {
+  background: #1a73e8 !important;
+  height: 3px !important;
+}
+
+.ant-table-thead > tr > th {
+  background: #ffffff !important;
+  border-bottom: 1px solid #dadce0 !important;
+  font-weight: 500 !important;
+  color: #5f6368 !important;
+}
+
+.ant-table-tbody > tr > td {
+  border-bottom: 1px solid #f1f3f4 !important;
+}
+
+.ant-table-tbody > tr:hover > td {
+  background: rgba(26, 115, 232, 0.04) !important;
+}
+
+.ant-modal-content {
+  background: #ffffff !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+.ant-modal-header {
+  background: #ffffff !important;
+  border-bottom: 1px solid #f1f3f4 !important;
+  border-radius: 8px 8px 0 0 !important;
+}
+
+.ant-upload-drag {
+  background: #ffffff !important;
+  border: 2px dashed #dadce0 !important;
+  border-radius: 8px !important;
+}
+
+.ant-upload-drag:hover {
+  border-color: #1a73e8 !important;
+  background: rgba(26, 115, 232, 0.04) !important;
+}
+
+.ant-btn-primary {
+  background: #1a73e8 !important;
+  border: 1px solid #1a73e8 !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+}
+
+.ant-btn-primary:hover {
+  background: #1557b0 !important;
+  border-color: #1557b0 !important;
+  box-shadow: none !important;
+}
+
+.ant-btn-primary:focus {
+  background: #1557b0 !important;
+  border-color: #1557b0 !important;
+}
+
+/* Professional scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f3f4;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #dadce0;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #bdc1c6;
+}
