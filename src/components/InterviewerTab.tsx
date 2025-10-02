@@ -34,6 +34,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { RootState } from '../store/store';
 import { selectCandidate, resetCurrentCandidate } from '../store/interviewSlice';
 import { Candidate } from '../types';
+import { UserRole } from '../types/auth';
 import dayjs from 'dayjs';
 
 const { Search } = Input;
@@ -286,6 +287,7 @@ const CandidateDetailModal: React.FC<CandidateDetailModalProps> = ({
 const InterviewerTab: React.FC = () => {
   const dispatch = useDispatch();
   const { candidates } = useSelector((state: RootState) => state.interview);
+  const { currentUser } = useSelector((state: RootState) => state.auth);
   const [searchText, setSearchText] = React.useState('');
   const [selectedCandidate, setSelectedCandidate] = React.useState<Candidate | null>(null);
   const [detailModalVisible, setDetailModalVisible] = React.useState(false);
@@ -455,16 +457,19 @@ const InterviewerTab: React.FC = () => {
             <TrophyOutlined style={{ marginRight: 8 }} />
             Interview Dashboard
           </Title>
-          <Space>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={handleStartNewInterview}
-              size="large"
-            >
-              Start New Interview
-            </Button>
-          </Space>
+          {/* Only show Start New Interview button for Interviewees */}
+          {currentUser?.role === UserRole.INTERVIEWEE && (
+            <Space>
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={handleStartNewInterview}
+                size="large"
+              >
+                Start New Interview
+              </Button>
+            </Space>
+          )}
         </div>
         
         <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>

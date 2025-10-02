@@ -178,25 +178,7 @@ const Login: React.FC = () => {
               </Button>
             </div>
 
-            {!isRegister && (
-              <div style={{ 
-                marginTop: '20px', 
-                padding: '15px',
-                background: '#f8f9fa',
-                borderRadius: '8px',
-                textAlign: 'center'
-              }}>
-                <Text style={{ color: '#6c757d', fontSize: '14px' }}>
-                  <strong>Demo Accounts:</strong><br />
-                  Admin: admin@demo.com / password123<br />
-                  Interviewer: interviewer@demo.com / password123<br />
-                  Interviewee: interviewee@demo.com / password123<br /><br />
-                  <Text style={{ color: '#856404', fontSize: '13px' }}>
-                    <strong>Note:</strong> Admin & Interviewer accounts can only be created through the Admin Portal.
-                  </Text>
-                </Text>
-              </div>
-            )}
+
           </Card>
         </Col>
       </Row>

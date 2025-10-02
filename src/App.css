@@ -16,6 +16,8 @@
   background: #f5f7fa;
   height: calc(100vh - 64px);
   padding: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .header-card {
@@ -55,6 +57,19 @@
 
 .ant-tabs-content-holder {
   background: #f5f7fa;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+}
+
+.ant-tabs-content {
+  height: 100%;
+}
+
+.ant-tabs-tabpane {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .ant-tabs-ink-bar {

@@ -110,8 +110,8 @@ const App: React.FC = () => {
     const items: TabsProps['items'] = [];
     let keyCounter = 1;
 
-    // Interviewees and Interviewers can take/conduct interviews
-    if (currentUser?.role === UserRole.INTERVIEWEE || currentUser?.role === UserRole.INTERVIEWER || currentUser?.role === UserRole.ADMIN) {
+    // Only Interviewees can take interviews
+    if (currentUser?.role === UserRole.INTERVIEWEE) {
       items.push({
         key: keyCounter.toString(),
         label: (
@@ -130,7 +130,7 @@ const App: React.FC = () => {
             )}
           </span>
         ),
-        children: <IntervieweeTab />,
+        children: <IntervieweeTab onNavigateToCoding={() => setActiveTab('2')} />,
       });
       keyCounter++;
 
@@ -301,21 +301,21 @@ const App: React.FC = () => {
         
         <Content className="app-content" style={{ 
           background: '#f5f7fa',
-          padding: '0',
-          overflow: 'hidden' 
+          padding: '0'
         }}>
           <Tabs
             activeKey={activeTab}
             items={getTabItems()}
             onChange={setActiveTab}
             size="large"
-            style={{ height: '100%' }}
+            style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
             tabBarStyle={{ 
               marginBottom: 0, 
               paddingLeft: 24,
               paddingTop: 8,
               background: '#ffffff',
-              borderBottom: '1px solid #dadce0'
+              borderBottom: '1px solid #dadce0',
+              flex: '0 0 auto'
             }}
           />
         </Content>

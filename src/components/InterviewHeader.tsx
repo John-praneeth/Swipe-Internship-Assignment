@@ -2,6 +2,7 @@ import React from 'react';
 import { Button, Progress, Tag } from 'antd';
 import { PlusOutlined, UserOutlined, MailOutlined, PhoneOutlined } from '@ant-design/icons';
 import { Candidate } from '../types';
+import { UserRole } from '../types/auth';
 
 interface InterviewHeaderProps {
   candidate: Candidate;
@@ -9,6 +10,7 @@ interface InterviewHeaderProps {
   onNewInterview: () => void;
   currentQuestionIndex?: number;
   totalQuestions?: number;
+  userRole?: UserRole;
 }
 
 const InterviewHeader: React.FC<InterviewHeaderProps> = ({
@@ -16,7 +18,8 @@ const InterviewHeader: React.FC<InterviewHeaderProps> = ({
   isInterviewActive,
   onNewInterview,
   currentQuestionIndex = 0,
-  totalQuestions = 0
+  totalQuestions = 0,
+  userRole
 }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -89,14 +92,17 @@ const InterviewHeader: React.FC<InterviewHeaderProps> = ({
         )}
       </div>
       
-      <Button
-        type="default"
-        icon={<PlusOutlined />}
-        onClick={onNewInterview}
-        disabled={isInterviewActive}
-      >
-        New Interview
-      </Button>
+      {/* Only show New Interview button for Interviewees */}
+      {userRole === UserRole.INTERVIEWEE && (
+        <Button
+          type="default"
+          icon={<PlusOutlined />}
+          onClick={onNewInterview}
+          disabled={isInterviewActive}
+        >
+          New Interview
+        </Button>
+      )}
     </div>
   );
 };

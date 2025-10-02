@@ -17,11 +17,11 @@ const interviewSlice = createSlice({
   name: 'interview',
   initialState,
   reducers: {
-    createCandidate: (state, action: PayloadAction<{ 
-      name?: string; 
-      email?: string; 
-      phone?: string; 
-      resumeFile?: File; 
+    createCandidate: (state, action: PayloadAction<{
+      name?: string;
+      email?: string;
+      phone?: string;
+      resumeFile?: File;
       resumeText?: string;
       projects?: any[];
       skills?: string[];
@@ -65,11 +65,28 @@ const interviewSlice = createSlice({
       if (state.currentCandidate) {
         state.currentCandidate[action.payload.field] = action.payload.value;
 
+        // Check if all required info is now collected
+        if (state.currentCandidate.name &&
+          state.currentCandidate.email &&
+          state.currentCandidate.phone &&
+          state.currentCandidate.status === 'collecting-info') {
+          // All info collected, change status to ready (but keep as collecting-info for now)
+          // We'll use a flag or just keep the status but the UI will check if all fields are filled
+        }
+
         // Update in candidates array
         const index = state.candidates.findIndex(c => c.id === state.currentCandidate!.id);
         if (index !== -1) {
           state.candidates[index][action.payload.field] = action.payload.value;
         }
+      }
+    },
+
+    markInfoCollectionComplete: (state) => {
+      if (state.currentCandidate && state.currentCandidate.status === 'collecting-info') {
+        // Don't change to 'in-progress' yet, just mark that collection is done
+        // The UI will check if name, email, and phone are all filled
+        // Status will change to 'in-progress' only when startInterview is called
       }
     },
 
@@ -395,6 +412,7 @@ const interviewSlice = createSlice({
 export const {
   createCandidate,
   updateCandidateInfo,
+  markInfoCollectionComplete,
   startInterview,
   submitAnswer,
   updateTimer,

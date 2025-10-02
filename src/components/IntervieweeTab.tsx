@@ -13,10 +13,10 @@ import {
 import { 
   InboxOutlined, 
   SendOutlined,
-  PlusOutlined,
   PlayCircleOutlined,
   UploadOutlined,
   QuestionCircleOutlined,
+  CodeOutlined,
 } from '@ant-design/icons';
 import type { UploadProps } from 'antd';
 import {
@@ -48,7 +48,11 @@ const timerStyles = `
 
 const { Dragger } = Upload;
 
-const IntervieweeTab: React.FC = () => {
+interface IntervieweeTabProps {
+  onNavigateToCoding?: () => void;
+}
+
+const IntervieweeTab: React.FC<IntervieweeTabProps> = ({ onNavigateToCoding }) => {
   const dispatch = useAppDispatch();
   const {
     currentCandidate,
@@ -57,6 +61,7 @@ const IntervieweeTab: React.FC = () => {
     questions,
     currentTimer,
   } = useAppSelector((state) => state.interview);
+  const { currentUser } = useAppSelector((state) => state.auth);
 
   const [isUploading, setIsUploading] = useState(false);
   const [currentAnswer, setCurrentAnswer] = useState('');
@@ -169,8 +174,14 @@ const IntervieweeTab: React.FC = () => {
   const handleFileUpload = async (file: File) => {
     setIsUploading(true);
     
+    // Show processing message
+    message.loading({ content: 'Extracting text from resume...', key: 'upload', duration: 0 });
+    
     try {
       const candidateInfo = await parseResumeData(file);
+      
+      // Update message
+      message.loading({ content: 'Analyzing resume content...', key: 'upload', duration: 0 });
       
       // Generate project-based questions
       const projectQuestions = ProjectBasedQuestionGenerator.generateProjectQuestions(candidateInfo);
@@ -182,39 +193,43 @@ const IntervieweeTab: React.FC = () => {
         projectQuestions,
       }));
       
-      // Create a more informative success message
-      let successMessage = 'Resume uploaded successfully!';
-      if (candidateInfo.name) {
-        successMessage += ` Welcome, ${candidateInfo.name}!`;
-      }
+      // Success message - always positive
+      message.success({ content: 'Your resume has been uploaded successfully!', key: 'upload', duration: 3 });
       
-      message.success(successMessage);
-      
-      // Create a personalized welcome message
-      let welcomeContent = 'Welcome! Your resume has been processed successfully.';
-      
-      if (candidateInfo.projects.length > 0) {
-        welcomeContent += ` I found ${candidateInfo.projects.length} project(s) in your resume: ${candidateInfo.projects.map(p => p.title).join(', ')}.`;
-      }
-      
-      if (candidateInfo.skills.length > 0) {
-        welcomeContent += ` Your key skills include: ${candidateInfo.skills.slice(0, 5).join(', ')}${candidateInfo.skills.length > 5 ? ' and more' : ''}.`;
-      }
-      
-      welcomeContent += ' I\'ll be asking you questions about your projects and experience. Let\'s start!';
-      
+      // Welcome message
       dispatch(addChatMessage({
         type: 'system',
-        content: welcomeContent,
+        content: '🎉 Welcome! Your resume has been processed successfully.',
       }));
       
-      // Show start interview message after successful upload
+      // Start conversational information collection
       setTimeout(() => {
-        dispatch(addChatMessage({
-          type: 'system',
-          content: 'Great! Now you can start your AI interview by clicking the "Start AI Interview" button below.',
-        }));
-      }, 1500);
+        // Always ask for name first (even if we have it, to confirm)
+        if (!candidateInfo.name || candidateInfo.name.trim() === '') {
+          dispatch(addChatMessage({
+            type: 'system',
+            content: 'To get started, I need a few details from you. What\'s your full name?',
+          }));
+        } else if (!candidateInfo.email || candidateInfo.email.trim() === '') {
+          // If we have name but not email
+          dispatch(addChatMessage({
+            type: 'system',
+            content: `Great to meet you! To continue, what's your email address?`,
+          }));
+        } else if (!candidateInfo.phone || candidateInfo.phone.trim() === '') {
+          // If we have name and email but not phone
+          dispatch(addChatMessage({
+            type: 'system',
+            content: 'Perfect! Last thing - what\'s your phone number?',
+          }));
+        } else {
+          // All information is available
+          dispatch(addChatMessage({
+            type: 'system',
+            content: '✅ All set! I have all the information I need. You can now start your AI interview by clicking the "Start AI Interview" button below.',
+          }));
+        }
+      }, 800);
       
     } catch (error) {
       console.error('Resume upload error:', error);
@@ -229,7 +244,7 @@ const IntervieweeTab: React.FC = () => {
         }
       }
       
-      message.error(errorMessage);
+      message.error({ content: errorMessage, key: 'upload', duration: 5 });
       
       // Still create a candidate with empty info for manual entry
       dispatch(createCandidate({
@@ -245,18 +260,13 @@ const IntervieweeTab: React.FC = () => {
         projectQuestions: [],
       }));
       
-      dispatch(addChatMessage({
-        type: 'system',
-        content: 'I had trouble reading your resume automatically. No worries! Please tell me your name, email, and phone number so we can get started.',
-      }));
-      
-      // Show start interview message for manual entry
+      // Start conversational flow even on error
       setTimeout(() => {
         dispatch(addChatMessage({
           type: 'system',
-          content: 'Once you provide your information, you can start the AI interview using the button below.',
+          content: 'No worries! Let\'s collect your information. What\'s your full name?',
         }));
-      }, 1000);
+      }, 500);
       
     } finally {
       setIsUploading(false);
@@ -307,52 +317,157 @@ const IntervieweeTab: React.FC = () => {
       
       console.log('Processing information collection:', userMessage);
       
-      // Simple pattern matching for missing info
-      const lowerMessage = userMessage.toLowerCase();
+      // Enhanced pattern matching for missing info
       let infoUpdated = false;
+      const updatedInfo: string[] = [];
       
-      // Check for email
-      if (!currentCandidate.email && lowerMessage.includes('@')) {
-        const emailMatch = userMessage.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/);
-        if (emailMatch) {
-          dispatch(updateCandidateInfo({ field: 'email', value: emailMatch[0] }));
-          dispatch(addChatMessage({
-            type: 'system',
-            content: `Great! I've recorded your email as ${emailMatch[0]}.`,
-          }));
+      // Check for email (multiple patterns)
+      if (!currentCandidate.email) {
+        const emailPatterns = [
+          /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g,
+          /(?:email|e-mail|mail)\s*:?\s*([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,})/gi
+        ];
+        
+        for (const pattern of emailPatterns) {
+          const emailMatch = userMessage.match(pattern);
+          if (emailMatch) {
+            let email = emailMatch[0];
+            // Clean up email if it has prefix
+            email = email.replace(/^(email|e-mail|mail)\s*:?\s*/gi, '').trim();
+            dispatch(updateCandidateInfo({ field: 'email', value: email }));
+            updatedInfo.push(`email: ${email}`);
+            infoUpdated = true;
+            break;
+          }
+        }
+      }
+      
+      // Check for phone (enhanced patterns)
+      if (!currentCandidate.phone) {
+        const phonePatterns = [
+          /\+?1?[-.\s]?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})/g,
+          /(?:phone|mobile|cell|number)\s*:?\s*(\+?[\d\s\-\(\)\.]{10,})/gi,
+          /\b\d{3}[-.\s]\d{3}[-.\s]\d{4}\b/g
+        ];
+        
+        for (const pattern of phonePatterns) {
+          const phoneMatch = userMessage.match(pattern);
+          if (phoneMatch) {
+            let phone = phoneMatch[0];
+            // Clean up phone if it has prefix
+            phone = phone.replace(/^(phone|mobile|cell|number)\s*:?\s*/gi, '').trim();
+            // Standardize phone format
+            phone = phone.replace(/[^\d+\-\(\)\.\s]/g, '');
+            dispatch(updateCandidateInfo({ field: 'phone', value: phone }));
+            updatedInfo.push(`phone: ${phone}`);
+            infoUpdated = true;
+            break;
+          }
+        }
+      }
+      
+      // Check for name (enhanced logic)
+      if (!currentCandidate.name) {
+        // Look for name patterns
+        const namePatterns = [
+          /(?:name|i'm|i am|my name is|call me)\s*:?\s*([A-Za-z\s]{2,30})/gi,
+          /^([A-Za-z]+\s+[A-Za-z]+)(?:\s|$)/  // First Last format at start
+        ];
+        
+        let nameFound = false;
+        for (const pattern of namePatterns) {
+          const nameMatch = userMessage.match(pattern);
+          if (nameMatch) {
+            let name = nameMatch[1] || nameMatch[0];
+            name = name.replace(/^(name|i'm|i am|my name is|call me)\s*:?\s*/gi, '').trim();
+            // Validate name (should be 2-4 words, no numbers, no email symbols)
+            if (name.split(' ').length <= 4 && !/[@\d]/.test(name) && name.length >= 2) {
+              dispatch(updateCandidateInfo({ field: 'name', value: name }));
+              updatedInfo.push(`name: ${name}`);
+              infoUpdated = true;
+              nameFound = true;
+              break;
+            }
+          }
+        }
+        
+        // Fallback: if message is short and looks like a name
+        if (!nameFound && userMessage.split(' ').length <= 3 && 
+            !/[@\d]/.test(userMessage) && userMessage.length >= 2 && 
+            userMessage.length <= 50) {
+          dispatch(updateCandidateInfo({ field: 'name', value: userMessage }));
+          updatedInfo.push(`name: ${userMessage}`);
           infoUpdated = true;
         }
       }
       
-      // Check for phone
-      if (!currentCandidate.phone && /\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/.test(userMessage)) {
-        const phoneMatch = userMessage.match(/\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/);
-        if (phoneMatch) {
-          dispatch(updateCandidateInfo({ field: 'phone', value: phoneMatch[0] }));
+      // Provide feedback based on what was updated
+      if (infoUpdated) {
+        let responseMessage = '';
+        if (updatedInfo.length === 1) {
+          responseMessage = `Great! I've recorded your ${updatedInfo[0]}.`;
+        } else {
+          responseMessage = `Perfect! I've recorded your ${updatedInfo.join(' and ')}.`;
+        }
+        
+        // Check if we still need more information
+        const stillMissing = [];
+        if (!currentCandidate.name && !updatedInfo.some(info => info.startsWith('name'))) {
+          stillMissing.push('name');
+        }
+        if (!currentCandidate.email && !updatedInfo.some(info => info.startsWith('email'))) {
+          stillMissing.push('email');
+        }
+        if (!currentCandidate.phone && !updatedInfo.some(info => info.startsWith('phone'))) {
+          stillMissing.push('phone number');
+        }
+        
+        if (stillMissing.length > 0) {
+          // Ask for the next missing piece of information one at a time
+          if (stillMissing.includes('name')) {
+            responseMessage += '\n\nWhat\'s your full name?';
+          } else if (stillMissing.includes('email')) {
+            responseMessage += '\n\nWhat\'s your email address?';
+          } else if (stillMissing.includes('phone number')) {
+            responseMessage += '\n\nWhat\'s your phone number?';
+          }
+        } else {
+          responseMessage += '\n\n✅ **All information collected!** You can now start the interview by clicking the "Start AI Interview" button below.';
+        }
+        
+        dispatch(addChatMessage({
+          type: 'system',
+          content: responseMessage,
+        }));
+      } else {
+        // No information was extracted, ask for the next missing piece
+        const stillNeeded = [];
+        if (!currentCandidate.name) stillNeeded.push('name');
+        if (!currentCandidate.email) stillNeeded.push('email');
+        if (!currentCandidate.phone) stillNeeded.push('phone number');
+        
+        if (stillNeeded.length > 0) {
+          let helpMessage = 'I didn\'t catch that. ';
+          
+          // Ask for the first missing piece
+          if (stillNeeded.includes('name')) {
+            helpMessage += 'Could you please tell me your full name?';
+          } else if (stillNeeded.includes('email')) {
+            helpMessage += 'Could you please provide your email address?';
+          } else if (stillNeeded.includes('phone number')) {
+            helpMessage += 'Could you please share your phone number?';
+          }
+          
           dispatch(addChatMessage({
             type: 'system',
-            content: `Perfect! I've recorded your phone number as ${phoneMatch[0]}.`,
+            content: helpMessage,
           }));
-          infoUpdated = true;
+        } else {
+          dispatch(addChatMessage({
+            type: 'system',
+            content: 'Thank you! You can start the interview anytime by clicking the "Start AI Interview" button below.',
+          }));
         }
-      }
-      
-      // Check for name (if it's a simple response without @ or numbers)
-      if (!currentCandidate.name && !lowerMessage.includes('@') && !/\d/.test(userMessage) && userMessage.split(' ').length <= 4) {
-        dispatch(updateCandidateInfo({ field: 'name', value: userMessage }));
-        dispatch(addChatMessage({
-          type: 'system',
-          content: `Nice to meet you, ${userMessage}! You can start the interview anytime by clicking the "Start AI Interview" button below.`,
-        }));
-        infoUpdated = true;
-      }
-      
-      // If no information was extracted, provide a helpful response
-      if (!infoUpdated) {
-        dispatch(addChatMessage({
-          type: 'system',
-          content: 'Thank you for that information. You can start the interview anytime by clicking the "Start AI Interview" button below, or continue chatting with me.',
-        }));
       }
     } else if (currentCandidate && currentCandidate.status !== 'collecting-info' && !isInterviewActive) {
       // If candidate exists but not collecting info and not in interview, just acknowledge
@@ -690,14 +805,18 @@ const IntervieweeTab: React.FC = () => {
         onNewInterview={handleNewInterview}
         currentQuestionIndex={currentCandidate.currentQuestionIndex}
         totalQuestions={questions.length}
+        userRole={currentUser?.role}
       />
 
-      <div className="chat-messages">
-        {chatMessages.map((msg) => (
-          <ChatMessage key={msg.id} message={msg} />
-        ))}
-        <div ref={messagesEndRef} />
-      </div>
+      {/* Hide chat messages when interview is active */}
+      {!isInterviewActive && (
+        <div className="chat-messages">
+          {chatMessages.map((msg) => (
+            <ChatMessage key={msg.id} message={msg} />
+          ))}
+          <div ref={messagesEndRef} />
+        </div>
+      )}
       
       <div className="chat-input-area">
         {currentCandidate.status === 'completed' ? (
@@ -739,20 +858,31 @@ const IntervieweeTab: React.FC = () => {
             </div>
             <div style={{ marginTop: '24px' }}>
               <p><strong>What's Next?</strong></p>
-              <p>We'll review your responses and get back to you within 2-3 business days.</p>
-              <p>Thank you for your time and effort!</p>
+              <p>Ready to showcase your coding skills? Take the coding interview next!</p>
               <Button
                 type="primary"
-                icon={<PlusOutlined />}
-                onClick={handleNewInterview}
+                icon={<CodeOutlined />}
+                onClick={() => {
+                  if (onNavigateToCoding) {
+                    onNavigateToCoding();
+                  }
+                }}
                 size="large"
-                style={{ marginTop: '16px' }}
+                style={{ 
+                  marginTop: '16px',
+                  height: '48px',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  background: 'linear-gradient(135deg, #722ed1 0%, #9254de 100%)',
+                  border: 'none',
+                  boxShadow: '0 4px 15px rgba(114, 46, 209, 0.3)'
+                }}
               >
-                Start New Interview
+                Start Coding Interview
               </Button>
             </div>
           </div>
-        ) : !isInterviewActive ? (
+        ) : !isInterviewActive && (currentCandidate.status !== 'collecting-info' || (currentCandidate.name && currentCandidate.email && currentCandidate.phone)) ? (
           <div style={{ 
             padding: '40px',
             textAlign: 'center',

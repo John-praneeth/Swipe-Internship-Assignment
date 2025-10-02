@@ -61,6 +61,24 @@ src/
 └── main.tsx            # Application entry point
 ```
 
+## 🔐 Demo Accounts
+
+For testing purposes, you can use the following demo accounts:
+
+| Role | Email | Password |
+|------|-------|----------|
+| **Admin** | admin@demo.com | password123 |
+| **Interviewer** | interviewer@demo.com | password123 |
+| **Interviewee** | interviewee@demo.com | password123 |
+
+### Account Roles
+
+- **Admin**: Full access to all features including user management and admin portal
+- **Interviewer**: Access to interviewer dashboard to view and manage candidate interviews
+- **Interviewee**: Can take AI interviews and coding interviews
+
+> **Note**: Admin and Interviewer accounts can only be created through the Admin Portal. Regular users can create Interviewee accounts through the registration page.
+
 ## 🚀 Getting Started
 
 ### Prerequisites

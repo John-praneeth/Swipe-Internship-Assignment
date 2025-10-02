@@ -8,8 +8,12 @@ export const extractTextFromPDF = async (file: File): Promise<string> => {
     try {
       // Try to import pdfjs-dist for browser environment
       pdfjsLib = await import('pdfjs-dist');
-      // Set worker source
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      
+      // Set worker source - use the correct version
+      if (typeof window !== 'undefined') {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js`;
+      }
+      
       console.log('PDF.js library loaded successfully');
     } catch (importError) {
       console.error('Failed to import PDF.js:', importError);
@@ -50,27 +54,71 @@ export const extractTextFromPDF = async (file: File): Promise<string> => {
 // Simple fallback PDF text extraction
 const extractTextFromPDFSimple = async (file: File): Promise<string> => {
   try {
+    console.log('Using simple PDF extraction fallback');
+    
     // This is a very basic approach - in production you'd want a proper PDF parser
     const arrayBuffer = await file.arrayBuffer();
     const uint8Array = new Uint8Array(arrayBuffer);
     
-    // Convert to string and try to extract readable text
+    // Look for text streams in PDF
     let text = '';
-    for (let i = 0; i < uint8Array.length; i++) {
+    let inTextStream = false;
+    let currentWord = '';
+    
+    for (let i = 0; i < uint8Array.length - 1; i++) {
       const char = String.fromCharCode(uint8Array[i]);
-      if (char.match(/[a-zA-Z0-9@.\-\s]/)) {
-        text += char;
+      const nextChar = String.fromCharCode(uint8Array[i + 1]);
+      
+      // Look for text stream markers
+      if (char === 'B' && nextChar === 'T') {
+        inTextStream = true;
+        continue;
+      }
+      if (char === 'E' && nextChar === 'T') {
+        inTextStream = false;
+        if (currentWord.trim()) {
+          text += currentWord + ' ';
+          currentWord = '';
+        }
+        continue;
+      }
+      
+      // Extract readable characters
+      if (inTextStream || char.match(/[a-zA-Z0-9@.\-\s()]/)) {
+        if (char.match(/[a-zA-Z0-9@.\-]/)) {
+          currentWord += char;
+        } else if (char === ' ' || char === '\n' || char === '\r') {
+          if (currentWord.trim()) {
+            text += currentWord + ' ';
+            currentWord = '';
+          }
+        }
       }
     }
     
+    // Add any remaining word
+    if (currentWord.trim()) {
+      text += currentWord;
+    }
+    
     // Clean up the extracted text
-    text = text.replace(/\s+/g, ' ').trim();
+    text = text
+      .replace(/\s+/g, ' ')
+      .replace(/[^\w\s@.\-()]/g, ' ')
+      .trim();
     
     console.log('Simple PDF extraction completed, text length:', text.length);
+    
+    // If we got very little text, it might be a scanned PDF
+    if (text.length < 50) {
+      console.warn('Very little text extracted, might be a scanned PDF');
+      throw new Error('This appears to be a scanned PDF. Please use a text-based PDF or provide information manually.');
+    }
+    
     return text;
   } catch (error) {
     console.error('Simple PDF extraction failed:', error);
-    throw new Error('Unable to extract text from PDF file');
+    throw new Error(`Unable to extract text from PDF file: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
 
@@ -161,7 +209,7 @@ export const parseResumeData = async (file: File): Promise<CandidateInfo> => {
         extractTextFromDOCX(file);
       
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('File processing timeout')), 30000); // 30 second timeout
+        setTimeout(() => reject(new Error('File processing timeout')), 15000); // 15 second timeout
       });
       
       extractedText = await Promise.race([extractionPromise, timeoutPromise]);

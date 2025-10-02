@@ -40,6 +40,8 @@ import {
   StopOutlined
 } from '@ant-design/icons';
 import { CodingQuestion, advancedQuestionBank, getQuestionsByDifficulty, getQuestionsByCategory } from '../utils/simpleQuestionBank';
+import { useAppSelector } from '../store/store';
+import { UserRole } from '../types/auth';
 
 
 const { Title, Text, Paragraph } = Typography;
@@ -69,6 +71,7 @@ interface InterviewSession {
 }
 
 const CodingInterviewPlatform: React.FC = () => {
+  const { currentUser } = useAppSelector((state) => state.auth);
   const [currentQuestion, setCurrentQuestion] = useState<CodingQuestion | null>(null);
   const [session, setSession] = useState<InterviewSession | null>(null);
   const [code, setCode] = useState('');
@@ -535,22 +538,33 @@ const CodingInterviewPlatform: React.FC = () => {
               </Col>
             </Row>
             
-            <Button
-              type="primary"
-              size="large"
-              icon={<PlayCircleOutlined />}
-              onClick={() => startInterview(selectedDifficulty, selectedCategory)}
-              style={{
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '8px 32px',
-                height: 'auto',
-                fontSize: '16px'
-              }}
-            >
-              Start Coding Interview
-            </Button>
+            {/* Only show Start button for Interviewees */}
+            {currentUser?.role === UserRole.INTERVIEWEE ? (
+              <Button
+                type="primary"
+                size="large"
+                icon={<PlayCircleOutlined />}
+                onClick={() => startInterview(selectedDifficulty, selectedCategory)}
+                style={{
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '8px 32px',
+                  height: 'auto',
+                  fontSize: '16px'
+                }}
+              >
+                Start Coding Interview
+              </Button>
+            ) : (
+              <Alert
+                message="Coding Interview Access"
+                description="This feature is only available for interviewees. Interviewers and admins can view candidate submissions in the dashboard."
+                type="info"
+                showIcon
+                style={{ maxWidth: '600px', margin: '0 auto' }}
+              />
+            )}
             
             <div style={{ marginTop: '40px' }}>
               <Row gutter={[24, 24]} justify="center">
