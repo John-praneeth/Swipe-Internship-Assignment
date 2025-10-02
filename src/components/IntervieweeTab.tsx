@@ -7,109 +7,145 @@ import {
   Input,
   message,
   Spin,
+  Radio,
   Progress,
-  Tag,
-  Tooltip,
-  Space,
-  Typography,
-  Badge,
 } from 'antd';
 import { 
   InboxOutlined, 
-  SendOutlined, 
-  PauseCircleOutlined, 
+  SendOutlined,
+  PlusOutlined,
   PlayCircleOutlined,
+  UploadOutlined,
   QuestionCircleOutlined,
-  BulbOutlined,
-  CheckCircleOutlined,
-  ClockCircleOutlined,
-  TrophyOutlined,
 } from '@ant-design/icons';
 import type { UploadProps } from 'antd';
 import {
   createCandidate,
-  updateCandidateInfo,
+  addChatMessage,
   startInterview,
+  resetCurrentCandidate,
+  updateCandidateInfo,
   submitAnswer,
   updateTimer,
   timeUp,
-  pauseInterview,
-  resumeInterview,
-  addChatMessage,
 } from '../store/interviewSlice';
 import {
-  extractTextFromPDF,
-  extractTextFromDOCX,
   parseResumeData,
-  isInfoComplete,
-  getMissingInfoMessage,
-  isValidEmail,
-  isValidPhone,
-  calculateTimeSpent,
 } from '../utils/resumeParser';
-import ChatMessage from './ChatMessage.tsx';
-import Timer from './Timer.tsx';
+import ProjectBasedQuestionGenerator from '../utils/projectBasedQuestionGenerator';
+import ChatMessage from './ChatMessage';
+import InterviewHeader from './InterviewHeader';
+import './InterviewStyles.css';
+
+// Add pulse animation for timer
+const timerStyles = `
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+`;
 
 const { Dragger } = Upload;
-const { TextArea } = Input;
-const { Text, Title } = Typography;
-
-// Helper function to provide hints for questions
-const getQuestionHint = (question: any): string => {
-  const hintMap: Record<string, string> = {
-    'JavaScript Fundamentals': '💡 Think about scope, hoisting, and memory allocation differences',
-    'React Basics': '💡 Consider component rendering, syntax benefits, and developer experience',
-    'Web Development': '💡 Focus on performance, manipulation differences, and rendering concepts',
-    'React Hooks': '💡 Explain lifecycle equivalents, dependency arrays, and cleanup functions',
-    'Database Design': '💡 Consider scalability, consistency, flexibility, and use cases',
-    'Asynchronous JavaScript': '💡 Think about .then(), .catch(), async/await, and error propagation',
-    'State Management': '💡 Compare complexity, scalability, performance, and team preferences',
-    'System Design': '💡 Consider architecture patterns, scalability bottlenecks, and real-time communication',
-    'Advanced JavaScript': '💡 Think about scope chain, practical applications, and memory management',
-    'Performance Optimization': '💡 Consider bundle size, rendering optimization, and user experience',
-    'Distributed Systems': '💡 Think about service communication, security patterns, and fault tolerance',
-  };
-  
-  return hintMap[question.category] || '💡 Structure your answer with clear points and examples';
-};
 
 const IntervieweeTab: React.FC = () => {
   const dispatch = useAppDispatch();
   const {
     currentCandidate,
-    isInterviewActive,
-    currentTimer,
-    questions,
     chatMessages,
+    isInterviewActive,
+    questions,
+    currentTimer,
   } = useAppSelector((state) => state.interview);
 
   const [isUploading, setIsUploading] = useState(false);
   const [currentAnswer, setCurrentAnswer] = useState('');
-  const [waitingForInfo, setWaitingForInfo] = useState<'name' | 'email' | 'phone' | null>(null);
+  const [selectedOption, setSelectedOption] = useState<string>('');
+  const [timeLeft, setTimeLeft] = useState<number>(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const timerRef = useRef<NodeJS.Timeout>();
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
 
-  // Timer effect
+  // Timer functionality
   useEffect(() => {
     if (isInterviewActive && currentTimer > 0) {
-      timerRef.current = setTimeout(() => {
-        dispatch(updateTimer(currentTimer - 1));
+      setTimeLeft(currentTimer);
+      
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+      
+      timerRef.current = setInterval(() => {
+        setTimeLeft((prev) => {
+          const newTime = prev - 1;
+          dispatch(updateTimer(newTime));
+          
+          if (newTime <= 0) {
+            // Time's up - auto submit
+            dispatch(timeUp());
+            handleTimeUp();
+            return 0;
+          }
+          return newTime;
+        });
       }, 1000);
-    } else if (isInterviewActive && currentTimer === 0) {
-      dispatch(timeUp());
+    } else {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
     }
 
     return () => {
       if (timerRef.current) {
-        clearTimeout(timerRef.current);
+        clearInterval(timerRef.current);
       }
     };
   }, [isInterviewActive, currentTimer, dispatch]);
+
+  const handleTimeUp = () => {
+    if (currentCandidate && questions.length > 0) {
+      dispatch(submitAnswer({
+        answer: '(Time expired)',
+        timeSpent: questions[currentCandidate.currentQuestionIndex]?.timeLimit || 30,
+        isCorrect: false,
+        selectedOption: '',
+      }));
+      setSelectedOption('');
+    }
+  };
+
+  const handleOptionSelect = (option: string) => {
+    if (!currentCandidate || !isInterviewActive) return;
+    
+    const currentQuestion = questions[currentCandidate.currentQuestionIndex];
+    if (!currentQuestion) return;
+
+    console.log('=== OPTION SELECTED ===');
+    console.log('Selected option:', option);
+    console.log('Correct answer:', currentQuestion.correctAnswer);
+    
+    const isCorrect = option === currentQuestion.correctAnswer;
+    const timeSpent = (currentQuestion.timeLimit || 30) - timeLeft;
+    
+    // Submit the answer immediately
+    dispatch(submitAnswer({
+      answer: option,
+      timeSpent: timeSpent,
+      isCorrect: isCorrect,
+      selectedOption: option,
+    }));
+    
+    // Reset selection for next question
+    setSelectedOption('');
+    
+    console.log('=== ANSWER SUBMITTED ===');
+    console.log('Is correct:', isCorrect);
+    console.log('Time spent:', timeSpent);
+  };
 
   const uploadProps: UploadProps = {
     name: 'file',
@@ -125,7 +161,7 @@ const IntervieweeTab: React.FC = () => {
       }
       
       handleFileUpload(file);
-      return false; // Prevent default upload
+      return false;
     },
     showUploadList: false,
   };
@@ -134,78 +170,94 @@ const IntervieweeTab: React.FC = () => {
     setIsUploading(true);
     
     try {
-      console.log('Starting file upload process for:', file.name, 'Type:', file.type);
-      
-      // Use the proper parseResumeData function with better error handling
       const candidateInfo = await parseResumeData(file);
       
-      console.log('Parsed candidate info:', candidateInfo);
-      
-      // Also extract the text for storage (if possible)
-      let extractedText = '';
-      try {
-        if (file.type === 'application/pdf') {
-          extractedText = await extractTextFromPDF(file);
-        } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-          extractedText = await extractTextFromDOCX(file);
-        }
-        console.log('Extracted text length:', extractedText.length);
-      } catch (textError) {
-        console.warn('Could not extract text for storage, continuing with manual input:', textError);
-        extractedText = `Resume uploaded: ${file.name} (Text extraction failed, information collected manually)`;
-      }
+      // Generate project-based questions
+      const projectQuestions = ProjectBasedQuestionGenerator.generateProjectQuestions(candidateInfo);
       
       dispatch(createCandidate({
         ...candidateInfo,
         resumeFile: file,
-        resumeText: extractedText,
+        resumeText: `Resume uploaded: ${file.name}`,
+        projectQuestions,
       }));
       
-      // Show success message
-      if (candidateInfo.name || candidateInfo.email || candidateInfo.phone) {
-        message.success('Resume uploaded and processed successfully!');
-      } else {
-        message.success('Resume uploaded! I\'ll help you fill in your details.');
+      // Create a more informative success message
+      let successMessage = 'Resume uploaded successfully!';
+      if (candidateInfo.name) {
+        successMessage += ` Welcome, ${candidateInfo.name}!`;
       }
       
-      // Check what info is missing and ask for it
-      if (!isInfoComplete(candidateInfo)) {
-        const missingMessage = getMissingInfoMessage(candidateInfo);
-        dispatch(addChatMessage({
-          type: 'system',
-          content: missingMessage,
-        }));
-        
-        // Set what we're waiting for
-        if (!candidateInfo.name) setWaitingForInfo('name');
-        else if (!candidateInfo.email) setWaitingForInfo('email');
-        else if (!candidateInfo.phone) setWaitingForInfo('phone');
-      } else {
-        // All info is complete, ask if ready to start
-        dispatch(addChatMessage({
-          type: 'system',
-          content: `Great! I have all your information:\n\n📝 **Name:** ${candidateInfo.name}\n📧 **Email:** ${candidateInfo.email}\n📱 **Phone:** ${candidateInfo.phone}\n\nAre you ready to start the interview? The interview consists of 6 questions:\n- 2 Easy questions (20 seconds each)\n- 2 Medium questions (60 seconds each)\n- 2 Hard questions (120 seconds each)\n\nType "yes" when you're ready to begin!`,
-        }));
+      message.success(successMessage);
+      
+      // Create a personalized welcome message
+      let welcomeContent = 'Welcome! Your resume has been processed successfully.';
+      
+      if (candidateInfo.projects.length > 0) {
+        welcomeContent += ` I found ${candidateInfo.projects.length} project(s) in your resume: ${candidateInfo.projects.map(p => p.title).join(', ')}.`;
       }
+      
+      if (candidateInfo.skills.length > 0) {
+        welcomeContent += ` Your key skills include: ${candidateInfo.skills.slice(0, 5).join(', ')}${candidateInfo.skills.length > 5 ? ' and more' : ''}.`;
+      }
+      
+      welcomeContent += ' I\'ll be asking you questions about your projects and experience. Let\'s start!';
+      
+      dispatch(addChatMessage({
+        type: 'system',
+        content: welcomeContent,
+      }));
+      
+      // Show start interview message after successful upload
+      setTimeout(() => {
+        dispatch(addChatMessage({
+          type: 'system',
+          content: 'Great! Now you can start your AI interview by clicking the "Start AI Interview" button below.',
+        }));
+      }, 1500);
+      
     } catch (error) {
       console.error('Resume upload error:', error);
       
-      // Provide more specific error messages
-      let errorMessage = 'Failed to process the resume. Please try again.';
-      
+      // More specific error handling
+      let errorMessage = 'Failed to process the resume.';
       if (error instanceof Error) {
-        if (error.message.includes('No text could be extracted')) {
-          errorMessage = 'Could not extract text from the resume. Please ensure the file is not password-protected or corrupted.';
-        } else if (error.message.includes('Unsupported file format')) {
-          errorMessage = 'Please upload a PDF or DOCX file only.';
-        } else if (error.message.includes('Failed to extract text from PDF')) {
-          errorMessage = 'Failed to read PDF file. Please ensure it is not corrupted or password-protected.';
-        } else if (error.message.includes('Failed to extract text from DOCX')) {
-          errorMessage = 'Failed to read DOCX file. Please ensure it is not corrupted or password-protected.';
+        if (error.message.includes('PDF')) {
+          errorMessage = 'Unable to extract text from PDF. Please try a different format or enter your information manually.';
+        } else if (error.message.includes('DOCX')) {
+          errorMessage = 'Unable to extract text from DOCX. Please try a different format or enter your information manually.';
         }
       }
       
       message.error(errorMessage);
+      
+      // Still create a candidate with empty info for manual entry
+      dispatch(createCandidate({
+        name: '',
+        email: '',
+        phone: '',
+        projects: [],
+        skills: [],
+        experience: [],
+        education: [],
+        resumeFile: file,
+        resumeText: `Resume uploaded: ${file.name} (Text extraction failed, information collected manually)`,
+        projectQuestions: [],
+      }));
+      
+      dispatch(addChatMessage({
+        type: 'system',
+        content: 'I had trouble reading your resume automatically. No worries! Please tell me your name, email, and phone number so we can get started.',
+      }));
+      
+      // Show start interview message for manual entry
+      setTimeout(() => {
+        dispatch(addChatMessage({
+          type: 'system',
+          content: 'Once you provide your information, you can start the AI interview using the button below.',
+        }));
+      }, 1000);
+      
     } finally {
       setIsUploading(false);
     }
@@ -217,261 +269,429 @@ const IntervieweeTab: React.FC = () => {
     const userMessage = currentAnswer.trim();
     setCurrentAnswer('');
     
-    if (!currentCandidate) return;
+    console.log('=== HANDLE SEND MESSAGE ===');
+    console.log('Message:', userMessage);
+    console.log('Is interview active:', isInterviewActive);
+    console.log('Candidate status:', currentCandidate?.status);
+    console.log('Questions length:', questions.length);
     
-    // Handle different states
-    if (waitingForInfo) {
-      handleInfoCollection(userMessage);
-    } else if (currentCandidate.status === 'collecting-info' && userMessage.toLowerCase() === 'yes') {
-      dispatch(startInterview());
-    } else if (isInterviewActive) {
-      // Submit answer
-      const timeSpent = calculateTimeSpent(
-        questions[currentCandidate.currentQuestionIndex]?.timeLimit || 0,
-        currentTimer
-      );
-      dispatch(submitAnswer({ answer: userMessage, timeSpent }));
-    } else {
-      // General chat
-      dispatch(addChatMessage({
-        type: 'user',
-        content: userMessage,
+    // PRIORITY 1: If interview is active, this is an answer to a question
+    if (isInterviewActive && currentCandidate && currentCandidate.status === 'in-progress') {
+      console.log('=== PROCESSING ANSWER ===');
+      console.log('Current question index:', currentCandidate.currentQuestionIndex);
+      
+      // Calculate time spent (mock for now - in real app you'd track actual time)
+      const timeSpent = Math.floor(Math.random() * 60) + 30; // 30-90 seconds
+      
+      // Submit the answer - this will handle the chat message and next question
+      dispatch(submitAnswer({
+        answer: userMessage,
+        timeSpent: timeSpent,
+        isCorrect: undefined, // Will be evaluated by the system
       }));
       
-      if (currentCandidate.status === 'collecting-info') {
-        dispatch(addChatMessage({
-          type: 'system',
-          content: 'Please type "yes" when you\'re ready to start the interview.',
-        }));
-      }
-    }
-  };
-
-  const handleInfoCollection = (value: string) => {
-    if (!currentCandidate || !waitingForInfo) return;
-    
-    let isValid = true;
-    let errorMessage = '';
-    
-    // Validate input based on what we're collecting
-    if (waitingForInfo === 'email' && !isValidEmail(value)) {
-      isValid = false;
-      errorMessage = 'Please enter a valid email address.';
-    } else if (waitingForInfo === 'phone' && !isValidPhone(value)) {
-      isValid = false;
-      errorMessage = 'Please enter a valid phone number.';
+      console.log('=== ANSWER SUBMITTED ===');
+      return; // IMPORTANT: Exit here - don't process as regular chat
     }
     
-    if (!isValid) {
-      dispatch(addChatMessage({
-        type: 'system',
-        content: errorMessage + ' Please try again:',
-      }));
-      return;
-    }
-    
-    // Update the candidate info
-    dispatch(updateCandidateInfo({ field: waitingForInfo, value }));
-    
+    // PRIORITY 2: If not in interview, add as regular chat message
     dispatch(addChatMessage({
       type: 'user',
-      content: value,
+      content: userMessage,
     }));
+
+    // PRIORITY 3: Only process information collection if status is 'collecting-info' AND interview is NOT active
+    if (currentCandidate && 
+        currentCandidate.status === 'collecting-info' && 
+        !isInterviewActive) {
+      
+      console.log('Processing information collection:', userMessage);
+      
+      // Simple pattern matching for missing info
+      const lowerMessage = userMessage.toLowerCase();
+      let infoUpdated = false;
+      
+      // Check for email
+      if (!currentCandidate.email && lowerMessage.includes('@')) {
+        const emailMatch = userMessage.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/);
+        if (emailMatch) {
+          dispatch(updateCandidateInfo({ field: 'email', value: emailMatch[0] }));
+          dispatch(addChatMessage({
+            type: 'system',
+            content: `Great! I've recorded your email as ${emailMatch[0]}.`,
+          }));
+          infoUpdated = true;
+        }
+      }
+      
+      // Check for phone
+      if (!currentCandidate.phone && /\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/.test(userMessage)) {
+        const phoneMatch = userMessage.match(/\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/);
+        if (phoneMatch) {
+          dispatch(updateCandidateInfo({ field: 'phone', value: phoneMatch[0] }));
+          dispatch(addChatMessage({
+            type: 'system',
+            content: `Perfect! I've recorded your phone number as ${phoneMatch[0]}.`,
+          }));
+          infoUpdated = true;
+        }
+      }
+      
+      // Check for name (if it's a simple response without @ or numbers)
+      if (!currentCandidate.name && !lowerMessage.includes('@') && !/\d/.test(userMessage) && userMessage.split(' ').length <= 4) {
+        dispatch(updateCandidateInfo({ field: 'name', value: userMessage }));
+        dispatch(addChatMessage({
+          type: 'system',
+          content: `Nice to meet you, ${userMessage}! You can start the interview anytime by clicking the "Start AI Interview" button below.`,
+        }));
+        infoUpdated = true;
+      }
+      
+      // If no information was extracted, provide a helpful response
+      if (!infoUpdated) {
+        dispatch(addChatMessage({
+          type: 'system',
+          content: 'Thank you for that information. You can start the interview anytime by clicking the "Start AI Interview" button below, or continue chatting with me.',
+        }));
+      }
+    } else if (currentCandidate && currentCandidate.status !== 'collecting-info' && !isInterviewActive) {
+      // If candidate exists but not collecting info and not in interview, just acknowledge
+      dispatch(addChatMessage({
+        type: 'system',
+        content: 'I understand. You can start the interview anytime by clicking the "Start AI Interview" button below.',
+      }));
+    }
+  };
+
+  const handleStartInterview = () => {
+    if (!currentCandidate) return;
     
-    // Check what's next
-    const updatedCandidate = { ...currentCandidate, [waitingForInfo]: value };
+    console.log('=== STARTING INTERVIEW ===');
+    console.log('Candidate:', currentCandidate.name || 'Anonymous');
+    console.log('Current status:', currentCandidate.status);
+    console.log('Is interview active before:', isInterviewActive);
     
-    if (!updatedCandidate.name) {
-      setWaitingForInfo('name');
-      dispatch(addChatMessage({
-        type: 'system',
-        content: 'Thank you! Now, what\'s your full name?',
-      }));
-    } else if (!updatedCandidate.email) {
-      setWaitingForInfo('email');
-      dispatch(addChatMessage({
-        type: 'system',
-        content: 'Great! What\'s your email address?',
-      }));
-    } else if (!updatedCandidate.phone) {
-      setWaitingForInfo('phone');
-      dispatch(addChatMessage({
-        type: 'system',
-        content: 'Perfect! What\'s your phone number?',
-      }));
-    } else {
-      // All info collected
-      setWaitingForInfo(null);
-      dispatch(addChatMessage({
-        type: 'system',
-        content: `Excellent! I have all your information:\n\n📝 **Name:** ${updatedCandidate.name}\n📧 **Email:** ${updatedCandidate.email}\n📱 **Phone:** ${updatedCandidate.phone}\n\nAre you ready to start the interview? The interview consists of 6 questions:\n- 2 Easy questions (20 seconds each)\n- 2 Medium questions (60 seconds each)\n- 2 Hard questions (120 seconds each)\n\nType "yes" when you're ready to begin!`,
-      }));
-    }
+    // Start the interview
+    dispatch(startInterview());
+    
+    console.log('=== INTERVIEW START DISPATCHED ===');
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
+  const handleNewInterview = () => {
+    dispatch(resetCurrentCandidate());
+    message.success('Ready for a new interview! Please upload your resume to get started.');
   };
 
-  const handlePauseResume = () => {
-    if (currentCandidate?.isPaused) {
-      dispatch(resumeInterview());
-    } else {
-      dispatch(pauseInterview());
-    }
+  const triggerFileUpload = () => {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.pdf,.docx';
+    fileInput.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        handleFileUpload(file);
+      }
+    };
+    fileInput.click();
   };
-
-  const getProgress = () => {
-    if (!currentCandidate || !questions.length) return 0;
-    return (currentCandidate.currentQuestionIndex / questions.length) * 100;
-  };
-
-  const getCurrentQuestion = () => {
-    if (!currentCandidate || !questions.length || !isInterviewActive) return null;
-    return questions[currentCandidate.currentQuestionIndex];
-  };
-
-  const currentQuestion = getCurrentQuestion();
 
   if (!currentCandidate) {
     return (
-      <div style={{ padding: 24, maxWidth: 600, margin: '0 auto' }}>
-        <Card title="Upload Your Resume" className="file-upload-area">
-          <Spin spinning={isUploading} tip="Processing your resume...">
-            <Dragger {...uploadProps} style={{ padding: 20 }}>
-              <p className="ant-upload-drag-icon">
-                <InboxOutlined style={{ fontSize: 48, color: '#1890ff' }} />
+      <div style={{ minHeight: '100vh', background: '#f5f7fa', padding: '20px' }}>
+        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+          {/* Header */}
+          <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+            <h1 style={{ fontSize: '36px', color: '#1890ff', marginBottom: '16px', fontWeight: 'bold' }}>
+              AI Interview Platform
+            </h1>
+            <p style={{ fontSize: '20px', color: '#666', marginBottom: '32px' }}>
+              Get personalized interview questions based on your resume
+            </p>
+            
+            {/* Prominent Start Button */}
+            <div style={{
+              background: 'linear-gradient(135deg, #1890ff 0%, #40a9ff 100%)',
+              padding: '32px',
+              borderRadius: '16px',
+              boxShadow: '0 12px 40px rgba(24, 144, 255, 0.3)',
+              marginBottom: '20px'
+            }}>
+              <div style={{ marginBottom: '20px' }}>
+                <div style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '50%',
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 16px',
+                  backdropFilter: 'blur(10px)'
+                }}>
+                  <PlayCircleOutlined style={{ fontSize: '28px', color: 'white' }} />
+                </div>
+                <h2 style={{ 
+                  color: 'white', 
+                  fontSize: '24px', 
+                  fontWeight: 'bold',
+                  marginBottom: '8px'
+                }}>
+                  Ready to Start Your AI Interview?
+                </h2>
+                <p style={{ 
+                  color: 'rgba(255, 255, 255, 0.9)', 
+                  fontSize: '16px',
+                  marginBottom: '0',
+                  lineHeight: '1.5'
+                }}>
+                  Upload your resume and get personalized questions in minutes
+                </p>
+              </div>
+              
+              <Button
+                type="default"
+                size="large"
+                icon={<UploadOutlined />}
+                onClick={() => {
+                  // Scroll to upload section
+                  const uploadSection = document.querySelector('[data-upload-section]');
+                  if (uploadSection) {
+                    uploadSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }
+                }}
+                style={{ 
+                  height: '56px',
+                  fontSize: '18px',
+                  fontWeight: 'bold',
+                  minWidth: '250px',
+                  borderRadius: '8px',
+                  background: 'white',
+                  color: '#1890ff',
+                  border: 'none',
+                  boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)'
+                }}
+              >
+                Start Interview Process
+              </Button>
+            </div>
+          </div>
+
+          {/* How It Works Section */}
+          <Card style={{ 
+            marginBottom: '40px', 
+            boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+            border: '1px solid #e8f4fd'
+          }}>
+            <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+              <h2 style={{ fontSize: '28px', color: '#1890ff', marginBottom: '16px', fontWeight: 'bold' }}>
+                How It Works
+              </h2>
+              <p style={{ fontSize: '16px', color: '#666' }}>
+                Our AI-powered interview process is simple and personalized
               </p>
-              <p className="ant-upload-text">
-                Click or drag your resume file to this area to upload
-              </p>
-              <p className="ant-upload-hint">
-                Support for PDF and DOCX files only. Your resume will be analyzed to extract basic information.
-              </p>
-            </Dragger>
-          </Spin>
-        </Card>
+            </div>
+
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+              gap: '30px',
+              marginBottom: '20px'
+            }}>
+              {/* Step 1 */}
+              <div style={{ textAlign: 'center' }}>
+                <div style={{
+                  width: '80px',
+                  height: '80px',
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #1890ff 0%, #40a9ff 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 20px',
+                  boxShadow: '0 8px 25px rgba(24, 144, 255, 0.3)'
+                }}>
+                  <UploadOutlined style={{ fontSize: '32px', color: 'white' }} />
+                </div>
+                <h3 style={{ fontSize: '18px', color: '#262626', marginBottom: '12px', fontWeight: 'bold' }}>
+                  1. Upload Resume
+                </h3>
+                <p style={{ fontSize: '14px', color: '#666', lineHeight: '1.6' }}>
+                  Provide your PDF or DOCX resume file
+                </p>
+              </div>
+
+              {/* Step 2 */}
+              <div style={{ textAlign: 'center' }}>
+                <div style={{
+                  width: '80px',
+                  height: '80px',
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #52c41a 0%, #73d13d 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 20px',
+                  boxShadow: '0 8px 25px rgba(82, 196, 26, 0.3)'
+                }}>
+                  <div style={{ fontSize: '32px', color: 'white' }}>🤖</div>
+                </div>
+                <h3 style={{ fontSize: '18px', color: '#262626', marginBottom: '12px', fontWeight: 'bold' }}>
+                  2. We Analyze
+                </h3>
+                <p style={{ fontSize: '14px', color: '#666', lineHeight: '1.6' }}>
+                  Our AI extracts your skills, projects, and experience
+                </p>
+              </div>
+
+              {/* Step 3 */}
+              <div style={{ textAlign: 'center' }}>
+                <div style={{
+                  width: '80px',
+                  height: '80px',
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #faad14 0%, #ffc53d 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 20px',
+                  boxShadow: '0 8px 25px rgba(250, 173, 20, 0.3)'
+                }}>
+                  <QuestionCircleOutlined style={{ fontSize: '32px', color: 'white' }} />
+                </div>
+                <h3 style={{ fontSize: '18px', color: '#262626', marginBottom: '12px', fontWeight: 'bold' }}>
+                  3. Personalized Questions
+                </h3>
+                <p style={{ fontSize: '14px', color: '#666', lineHeight: '1.6' }}>
+                  Based on your resume, we create custom interview questions
+                </p>
+              </div>
+
+              {/* Step 4 */}
+              <div style={{ textAlign: 'center' }}>
+                <div style={{
+                  width: '80px',
+                  height: '80px',
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #722ed1 0%, #9254de 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 20px',
+                  boxShadow: '0 8px 25px rgba(114, 46, 209, 0.3)'
+                }}>
+                  <PlayCircleOutlined style={{ fontSize: '32px', color: 'white' }} />
+                </div>
+                <h3 style={{ fontSize: '18px', color: '#262626', marginBottom: '12px', fontWeight: 'bold' }}>
+                  4. Start Interview
+                </h3>
+                <p style={{ fontSize: '14px', color: '#666', lineHeight: '1.6' }}>
+                  Begin your interview with tailored questions
+                </p>
+              </div>
+            </div>
+          </Card>
+
+          {/* Upload Section */}
+          <Card 
+            data-upload-section
+            title={
+              <div style={{ textAlign: 'center' }}>
+                <h2 style={{ margin: 0, color: '#1890ff', fontSize: '24px', fontWeight: 'bold' }}>
+                  Upload Your Resume to Get Started
+                </h2>
+                <p style={{ margin: '8px 0 0', color: '#666', fontSize: '16px' }}>
+                  Drag and drop your resume or click to browse
+                </p>
+              </div>
+            } 
+            style={{ 
+              boxShadow: '0 8px 30px rgba(0,0,0,0.1)',
+              border: '2px solid #e8f4fd'
+            }}
+          >
+            <Spin spinning={isUploading} tip="Processing your resume...">
+              <Dragger {...uploadProps} style={{ 
+                padding: 40, 
+                marginBottom: 30,
+                border: '2px dashed #1890ff',
+                borderRadius: '12px',
+                background: '#fafcff'
+              }}>
+                <p className="ant-upload-drag-icon">
+                  <InboxOutlined style={{ fontSize: 72, color: '#1890ff' }} />
+                </p>
+                <p className="ant-upload-text" style={{ 
+                  fontSize: '20px', 
+                  fontWeight: 'bold',
+                  color: '#262626',
+                  marginBottom: '12px'
+                }}>
+                  Click or drag your resume file to this area to upload
+                </p>
+                <p className="ant-upload-hint" style={{ 
+                  fontSize: '16px',
+                  color: '#666',
+                  lineHeight: '1.6'
+                }}>
+                  Support for PDF and DOCX files only. We'll extract your information and create personalized questions tailored to your background and experience.
+                </p>
+              </Dragger>
+              
+              <div style={{ textAlign: 'center' }}>
+                <Button
+                  type="primary"
+                  size="large"
+                  icon={<UploadOutlined />}
+                  onClick={triggerFileUpload}
+                  style={{ 
+                    height: '56px',
+                    fontSize: '18px',
+                    fontWeight: 'bold',
+                    minWidth: '250px',
+                    borderRadius: '8px',
+                    boxShadow: '0 6px 20px rgba(24, 144, 255, 0.4)'
+                  }}
+                >
+                  Choose Resume File
+                </Button>
+              </div>
+            </Spin>
+          </Card>
+
+          {/* Additional Info */}
+          <div style={{ 
+            textAlign: 'center', 
+            marginTop: '30px',
+            padding: '20px',
+            background: '#f0f8ff',
+            borderRadius: '8px',
+            border: '1px solid #e8f4fd'
+          }}>
+            <p style={{ 
+              fontSize: '14px', 
+              color: '#666', 
+              margin: 0,
+              lineHeight: '1.6'
+            }}>
+              <strong>Privacy Note:</strong> Your resume is processed locally and securely. We extract only the information needed to create personalized interview questions.
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="chat-container">
-      {isInterviewActive && (
-        <div style={{ 
-          padding: '20px 24px', 
-          borderBottom: '1px solid #f0f0f0', 
-          background: 'linear-gradient(135deg, #f6f9fc 0%, #e9f4ff 100%)',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)'
-        }}>
-          {/* Interview Header */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <Space size="large">
-              <Badge 
-                count={`${currentCandidate.currentQuestionIndex + 1}/${questions.length}`}
-                style={{ backgroundColor: '#1890ff' }}
-              >
-                <Title level={4} style={{ margin: 0, color: '#1890ff' }}>
-                  <TrophyOutlined /> Interview Progress
-                </Title>
-              </Badge>
-              {currentQuestion && (
-                <Tag 
-                  className={`difficulty-${currentQuestion.difficulty}`}
-                  style={{
-                    fontSize: '14px',
-                    padding: '4px 12px',
-                    borderRadius: '20px',
-                    fontWeight: 'bold'
-                  }}
-                >
-                  {currentQuestion.difficulty.toUpperCase()} - {currentQuestion.category}
-                </Tag>
-              )}
-            </Space>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              <Timer time={currentTimer} totalTime={currentQuestion?.timeLimit || 120} />
-              <Tooltip title={currentCandidate.isPaused ? 'Resume Interview' : 'Pause Interview'}>
-                <Button
-                  type="default"
-                  icon={currentCandidate.isPaused ? <PlayCircleOutlined /> : <PauseCircleOutlined />}
-                  onClick={handlePauseResume}
-                  size="large"
-                  style={{
-                    borderRadius: '25px',
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
-                  }}
-                >
-                  {currentCandidate.isPaused ? 'Resume' : 'Pause'}
-                </Button>
-              </Tooltip>
-            </div>
-          </div>
+      <style>{timerStyles}</style>
+      <InterviewHeader
+        candidate={currentCandidate}
+        isInterviewActive={isInterviewActive}
+        onNewInterview={handleNewInterview}
+        currentQuestionIndex={currentCandidate.currentQuestionIndex}
+        totalQuestions={questions.length}
+      />
 
-          {/* Progress Bar with Steps */}
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <Text strong style={{ color: '#1890ff' }}>
-                <ClockCircleOutlined /> Question {currentCandidate.currentQuestionIndex + 1} of {questions.length}
-              </Text>
-              <Text type="secondary">
-                Time: {Math.floor(currentTimer / 60)}:{(currentTimer % 60).toString().padStart(2, '0')}
-              </Text>
-            </div>
-            <Progress 
-              percent={getProgress()} 
-              showInfo={false}
-              strokeColor={{
-                '0%': '#108ee9',
-                '100%': '#87d068',
-              }}
-              style={{ marginBottom: 8 }}
-            />
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              {questions.map((q, index) => (
-                <div key={q.id} style={{ 
-                  fontSize: '12px',
-                  color: index < currentCandidate.currentQuestionIndex ? '#52c41a' : 
-                         index === currentCandidate.currentQuestionIndex ? '#1890ff' : '#d9d9d9',
-                  textAlign: 'center',
-                  flex: 1
-                }}>
-                  {index < currentCandidate.currentQuestionIndex ? 
-                    <CheckCircleOutlined /> : 
-                    index === currentCandidate.currentQuestionIndex ?
-                    <ClockCircleOutlined /> :
-                    <QuestionCircleOutlined />
-                  }
-                  <br />
-                  Q{index + 1}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Question Hints */}
-          {currentQuestion && (
-            <div style={{
-              background: 'rgba(24, 144, 255, 0.05)',
-              border: '1px solid rgba(24, 144, 255, 0.2)',
-              borderRadius: '8px',
-              padding: '12px',
-              marginTop: 12
-            }}>
-              <Space>
-                <BulbOutlined style={{ color: '#1890ff' }} />
-                <Text style={{ color: '#1890ff', fontSize: '13px' }}>
-                  <strong>Tip:</strong> Structure your answer clearly and provide specific examples when possible.
-                </Text>
-              </Space>
-            </div>
-          )}
-        </div>
-      )}
-      
       <div className="chat-messages">
         {chatMessages.map((msg) => (
           <ChatMessage key={msg.id} message={msg} />
@@ -481,358 +701,363 @@ const IntervieweeTab: React.FC = () => {
       
       <div className="chat-input-area">
         {currentCandidate.status === 'completed' ? (
-          <div style={{ padding: '24px', maxWidth: '800px', margin: '0 auto' }}>
-            {/* Thank You Header */}
-            <Card 
-              className="completion-card thank-you-header"
-              style={{ 
-                marginBottom: '24px',
-                textAlign: 'center',
-                border: '2px solid #1890ff',
+          <div style={{ padding: '24px', textAlign: 'center' }}>
+            <div style={{
+              background: 'linear-gradient(135deg, #52c41a 0%, #73d13d 100%)',
+              color: 'white',
+              padding: '40px',
+              borderRadius: '12px',
+              marginBottom: '24px'
+            }}>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🎉</div>
+              <h2 style={{ color: 'white', margin: '0 0 16px 0' }}>Interview Completed!</h2>
+              <p style={{ color: 'white', fontSize: '18px', margin: 0 }}>
+                Congratulations! You have successfully completed your interview.
+              </p>
+            </div>
+            <div style={{
+              background: '#f8f9fa',
+              padding: '24px',
+              borderRadius: '8px',
+              marginBottom: '24px'
+            }}>
+              <h3>Your Performance Summary</h3>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '40px', marginTop: '20px' }}>
+                <div>
+                  <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#52c41a' }}>
+                    {currentCandidate.finalScore || 0}%
+                  </div>
+                  <div>Final Score</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#1890ff' }}>
+                    {currentCandidate.answers.length}
+                  </div>
+                  <div>Questions Answered</div>
+                </div>
+              </div>
+            </div>
+            <div style={{ marginTop: '24px' }}>
+              <p><strong>What's Next?</strong></p>
+              <p>We'll review your responses and get back to you within 2-3 business days.</p>
+              <p>Thank you for your time and effort!</p>
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={handleNewInterview}
+                size="large"
+                style={{ marginTop: '16px' }}
+              >
+                Start New Interview
+              </Button>
+            </div>
+          </div>
+        ) : !isInterviewActive ? (
+          <div style={{ 
+            padding: '40px',
+            textAlign: 'center',
+            background: 'linear-gradient(135deg, #f0f8ff 0%, #e6f4ff 100%)',
+            border: '2px solid #1890ff',
+            borderRadius: '16px',
+            margin: '20px',
+            boxShadow: '0 8px 30px rgba(24, 144, 255, 0.15)'
+          }}>
+            <div style={{ marginBottom: '24px' }}>
+              <div style={{
+                width: '80px',
+                height: '80px',
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #52c41a 0%, #73d13d 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 20px',
+                boxShadow: '0 8px 25px rgba(82, 196, 26, 0.3)'
+              }}>
+                <div style={{ fontSize: '32px' }}>✅</div>
+              </div>
+              <h2 style={{ 
+                fontSize: '28px', 
+                color: '#1890ff', 
+                marginBottom: '16px',
+                fontWeight: 'bold'
+              }}>
+                Resume Processed Successfully!
+              </h2>
+              <p style={{ 
+                fontSize: '18px', 
+                color: '#666', 
+                marginBottom: '8px',
+                lineHeight: '1.6'
+              }}>
+                I've analyzed your resume and prepared personalized questions based on your background.
+              </p>
+              {currentCandidate.name && (
+                <p style={{ 
+                  fontSize: '16px', 
+                  color: '#52c41a', 
+                  fontWeight: 'bold',
+                  marginBottom: '0'
+                }}>
+                  Welcome, {currentCandidate.name}! 👋
+                </p>
+              )}
+            </div>
+
+            {/* Resume Summary */}
+            {(currentCandidate.skills.length > 0 || currentCandidate.projects.length > 0) && (
+              <div style={{
+                background: 'white',
+                padding: '20px',
                 borderRadius: '12px',
-                boxShadow: '0 8px 32px rgba(24, 144, 255, 0.12)',
-                position: 'relative'
+                marginBottom: '30px',
+                border: '1px solid #e8f4fd',
+                textAlign: 'left'
+              }}>
+                <h4 style={{ 
+                  fontSize: '16px', 
+                  color: '#1890ff', 
+                  marginBottom: '16px',
+                  textAlign: 'center'
+                }}>
+                  What I Found in Your Resume:
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                  {currentCandidate.skills.length > 0 && (
+                    <div>
+                      <strong style={{ color: '#262626' }}>Skills:</strong>
+                      <p style={{ 
+                        fontSize: '14px', 
+                        color: '#666', 
+                        margin: '4px 0 0',
+                        lineHeight: '1.5'
+                      }}>
+                        {currentCandidate.skills.slice(0, 5).join(', ')}
+                        {currentCandidate.skills.length > 5 && ' and more...'}
+                      </p>
+                    </div>
+                  )}
+                  {currentCandidate.projects.length > 0 && (
+                    <div>
+                      <strong style={{ color: '#262626' }}>Projects:</strong>
+                      <p style={{ 
+                        fontSize: '14px', 
+                        color: '#666', 
+                        margin: '4px 0 0',
+                        lineHeight: '1.5'
+                      }}>
+                        {currentCandidate.projects.slice(0, 3).map(p => p.title).join(', ')}
+                        {currentCandidate.projects.length > 3 && ' and more...'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <Button
+              type="primary"
+              icon={<PlayCircleOutlined />}
+              onClick={handleStartInterview}
+              size="large"
+              style={{ 
+                height: '56px',
+                fontSize: '18px',
+                fontWeight: 'bold',
+                minWidth: '250px',
+                borderRadius: '8px',
+                boxShadow: '0 6px 20px rgba(24, 144, 255, 0.4)',
+                background: 'linear-gradient(135deg, #1890ff 0%, #40a9ff 100%)',
+                border: 'none'
               }}
             >
-              <div className="completion-confetti">
-                {[...Array(20)].map((_, i) => (
-                  <div 
-                    key={i}
-                    className="confetti-piece"
-                    style={{
-                      left: `${Math.random() * 100}%`,
-                      animationDelay: `${Math.random() * 3}s`,
-                      animationDuration: `${3 + Math.random() * 2}s`
-                    }}
-                  />
-                ))}
-              </div>
-              <Space direction="vertical" size="large" style={{ position: 'relative', zIndex: 1 }}>
-                <div>
-                  <TrophyOutlined className="trophy-glow" style={{ fontSize: '64px', color: '#faad14', marginBottom: '16px' }} />
-                  <Title level={2} style={{ margin: 0, color: '#1890ff', fontWeight: 'bold' }}>
-                    🎉 Interview Completed Successfully!
-                  </Title>
-                </div>
-                <div>
-                  <Title level={3} style={{ color: '#52c41a', margin: '16px 0' }}>
-                    Thank You, {currentCandidate.name}!
-                  </Title>
-                  <Text style={{ fontSize: '18px', color: '#666', display: 'block', marginBottom: '8px' }}>
-                    We appreciate the time and effort you've put into this interview.
-                  </Text>
-                  <Text style={{ fontSize: '16px', color: '#888' }}>
-                    We will review your responses and reach out to you soon with the next steps.
-                  </Text>
-                </div>
-                <div className="final-score-badge pulse-animation" style={{
-                  background: 'rgba(82, 196, 26, 0.1)',
-                  border: '2px solid #52c41a',
-                  borderRadius: '12px',
-                  padding: '20px',
-                  display: 'inline-block'
-                }}>
-                  <Text strong style={{ fontSize: '24px', color: '#52c41a' }}>
-                    Final Score: {currentCandidate.finalScore || 0}/100
-                  </Text>
-                </div>
-              </Space>
-            </Card>
-
-            {/* Detailed Scorecard */}
-            <Card 
-              title={
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <TrophyOutlined style={{ color: '#1890ff' }} />
-                  <span style={{ color: '#1890ff', fontWeight: 'bold' }}>Interview Scorecard</span>
-                </div>
-              }
-              style={{ borderRadius: '12px', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.06)' }}
-            >
-              {/* Interview Summary Stats */}
-              <div style={{ marginBottom: '24px' }}>
-                <Space size="large" wrap>
-                  <div className="scorecard-stat" style={{ textAlign: 'center', minWidth: '120px' }}>
-                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1890ff' }}>
-                      {questions.length}
-                    </div>
-                    <Text type="secondary">Questions</Text>
-                  </div>
-                  <div className="scorecard-stat" style={{ textAlign: 'center', minWidth: '120px' }}>
-                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#52c41a' }}>
-                      {currentCandidate.answers.filter(a => a.answer.trim().length > 0).length}
-                    </div>
-                    <Text type="secondary">Answered</Text>
-                  </div>
-                  <div className="scorecard-stat" style={{ textAlign: 'center', minWidth: '120px' }}>
-                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#faad14' }}>
-                      {Math.round(currentCandidate.answers.reduce((acc, answer) => acc + answer.timeSpent, 0) / 60)}m
-                    </div>
-                    <Text type="secondary">Total Time</Text>
-                  </div>
-                  <div className="scorecard-stat" style={{ textAlign: 'center', minWidth: '120px' }}>
-                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#722ed1' }}>
-                      {currentCandidate.startTime && currentCandidate.endTime ? 
-                        Math.round((currentCandidate.endTime - currentCandidate.startTime) / 1000 / 60) : 0}m
-                    </div>
-                    <Text type="secondary">Session Time</Text>
-                  </div>
-                </Space>
-              </div>
-
-              {/* Performance by Difficulty */}
-              <div style={{ marginBottom: '24px' }}>
-                <Title level={4} style={{ color: '#1890ff', marginBottom: '16px' }}>
-                  Performance by Difficulty
-                </Title>
-                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                  {['easy', 'medium', 'hard'].map(difficulty => {
-                    const difficultyAnswers = currentCandidate.answers.filter(a => a.difficulty === difficulty);
-                    const answered = difficultyAnswers.filter(a => a.answer.trim().length > 0).length;
-                    const total = difficultyAnswers.length;
-                    const percentage = total > 0 ? (answered / total) * 100 : 0;
-                    
-                    return (
-                      <div key={difficulty} className={`performance-card difficulty-${difficulty}`} style={{
-                        flex: 1,
-                        minWidth: '200px',
-                        border: '1px solid',
-                        borderRadius: '8px',
-                        padding: '16px',
-                        textAlign: 'center'
-                      }}>
-                        <Tag 
-                          className={`difficulty-${difficulty}`}
-                          style={{ marginBottom: '8px', fontSize: '12px', fontWeight: 'bold' }}
-                        >
-                          {difficulty.toUpperCase()}
-                        </Tag>
-                        <div style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '4px' }}>
-                          {answered}/{total}
-                        </div>
-                        <Text type="secondary" style={{ fontSize: '12px' }}>
-                          Questions Completed
-                        </Text>
-                        <Progress 
-                          percent={percentage} 
-                          size="small" 
-                          showInfo={false}
-                          strokeColor={difficulty === 'easy' ? '#52c41a' : difficulty === 'medium' ? '#faad14' : '#ff4d4f'}
-                          style={{ marginTop: '8px' }}
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Individual Question Performance */}
-              <div>
-                <Title level={4} style={{ color: '#1890ff', marginBottom: '16px' }}>
-                  Question-by-Question Performance
-                </Title>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {currentCandidate.answers.map((answer, index) => {
-                    const question = questions.find(q => q.id === answer.questionId);
-                    if (!question) return null;
-                    
-                    const timePercentage = (answer.timeSpent / question.timeLimit) * 100;
-                    const hasAnswer = answer.answer.trim().length > 0;
-                    
-                    return (
-                      <div key={answer.questionId} className="question-performance-item" style={{
-                        background: '#fafafa',
-                        border: '1px solid #f0f0f0',
-                        borderRadius: '8px',
-                        padding: '16px'
-                      }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                          <div style={{ flex: 1 }}>
-                            <Text strong style={{ color: '#1890ff' }}>
-                              Question {index + 1}: 
-                            </Text>
-                            <Tag 
-                              className={`difficulty-${question.difficulty}`}
-                              style={{ marginLeft: '8px', fontSize: '11px' }}
-                            >
-                              {question.difficulty.toUpperCase()}
-                            </Tag>
-                            <div style={{ marginTop: '4px', color: '#666' }}>
-                              {question.category}
-                            </div>
-                          </div>
-                          <div style={{ textAlign: 'right' }}>
-                            <div style={{ 
-                              color: hasAnswer ? '#52c41a' : '#ff4d4f',
-                              fontWeight: 'bold',
-                              fontSize: '12px'
-                            }}>
-                              {hasAnswer ? '✓ ANSWERED' : '✗ NOT ANSWERED'}
-                            </div>
-                            <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>
-                              {Math.floor(answer.timeSpent / 60)}:{(answer.timeSpent % 60).toString().padStart(2, '0')} / {Math.floor(question.timeLimit / 60)}:{(question.timeLimit % 60).toString().padStart(2, '0')}
-                            </div>
-                          </div>
-                        </div>
-                        <Progress 
-                          percent={timePercentage} 
-                          size="small" 
-                          showInfo={false}
-                          strokeColor={timePercentage > 90 ? '#ff4d4f' : timePercentage > 70 ? '#faad14' : '#52c41a'}
-                          format={() => `${Math.round(timePercentage)}%`}
-                        />
-                        {hasAnswer && (
-                          <div style={{ 
-                            marginTop: '8px', 
-                            padding: '8px',
-                            background: '#fff',
-                            borderRadius: '4px',
-                            border: '1px solid #e8e8e8'
-                          }}>
-                            <Text style={{ fontSize: '12px', color: '#666' }}>
-                              Answer length: {answer.answer.length} characters
-                            </Text>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Summary Message */}
-              <div style={{ 
-                marginTop: '24px',
-                padding: '20px',
-                background: 'linear-gradient(135deg, #e6f7ff 0%, #f0f9ff 100%)',
-                border: '1px solid #91d5ff',
-                borderRadius: '8px',
-                textAlign: 'center'
-              }}>
-                <Title level={4} style={{ color: '#1890ff', marginBottom: '12px' }}>
-                  What's Next?
-                </Title>
-                <Text style={{ fontSize: '16px', color: '#666', display: 'block', marginBottom: '8px' }}>
-                  🔍 Our team will carefully review your responses and technical approach
-                </Text>
-                <Text style={{ fontSize: '16px', color: '#666', display: 'block', marginBottom: '8px' }}>
-                  📧 You'll receive an email with feedback and next steps within 2-3 business days
-                </Text>
-                <Text style={{ fontSize: '16px', color: '#666' }}>
-                  💼 Thank you for your interest in joining our team!
-                </Text>
-              </div>
-            </Card>
+              Start AI Interview
+            </Button>
+            
+            <p style={{ 
+              fontSize: '14px', 
+              color: '#666', 
+              marginTop: '16px',
+              marginBottom: '0'
+            }}>
+              The interview will include multiple-choice questions tailored to your experience
+            </p>
           </div>
-        ) : (
-          <div style={{ position: 'relative' }}>
-            {/* Character count and status indicators */}
+        ) : isInterviewActive && currentCandidate && questions.length > 0 ? (
+          // Multiple Choice Question Interface
+          <div style={{ margin: '16px' }}>
+            {/* Timer and Progress Header */}
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              padding: '8px 16px',
-              background: '#fafafa',
-              borderRadius: '8px 8px 0 0',
-              fontSize: '12px',
-              color: '#666'
+              padding: '16px 20px',
+              background: 'linear-gradient(135deg, #f0f8ff 0%, #e6f4ff 100%)',
+              borderRadius: '12px 12px 0 0',
+              border: '1px solid #d9d9d9',
+              borderBottom: 'none'
             }}>
-              <Space>
-                {waitingForInfo ? (
-                  <Text type="secondary">
-                    <QuestionCircleOutlined /> Please provide your {waitingForInfo}
-                  </Text>
-                ) : isInterviewActive ? (
-                  <Space>
-                    <Text type="secondary">
-                      <ClockCircleOutlined /> Question {currentCandidate.currentQuestionIndex + 1} of {questions.length}
-                    </Text>
-                    {currentQuestion && (
-                      <Text type="secondary">
-                        • {currentQuestion.difficulty.toUpperCase()}
-                      </Text>
-                    )}
-                  </Space>
-                ) : (
-                  <Text type="secondary">
-                    <BulbOutlined /> Type your message
-                  </Text>
-                )}
-              </Space>
-              <Text type="secondary">
-                {currentAnswer.length}/1000 characters
-              </Text>
-            </div>
-
-            <div style={{ 
-              display: 'flex', 
-              gap: 12,
-              padding: '12px',
-              background: '#fff',
-              borderRadius: '0 0 8px 8px',
-              border: '1px solid #f0f0f0',
-              borderTop: 'none'
-            }}>
-              <TextArea
-                value={currentAnswer}
-                onChange={(e) => setCurrentAnswer(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder={
-                  waitingForInfo 
-                    ? `Enter your ${waitingForInfo}...`
-                    : isInterviewActive 
-                      ? 'Type your answer here... (Press Enter to send, Shift+Enter for new line)'
-                      : 'Type your message...'
-                }
-                autoSize={{ minRows: 2, maxRows: 6 }}
-                disabled={currentCandidate.isPaused}
-                maxLength={1000}
-                style={{
-                  borderRadius: '8px',
-                  fontSize: '14px'
-                }}
-                showCount
-              />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <Tooltip title={currentAnswer.trim() ? "Send your response" : "Please type your answer first"}>
-                  <Button
-                    type="primary"
-                    icon={<SendOutlined />}
-                    onClick={handleSendMessage}
-                    disabled={!currentAnswer.trim() || currentCandidate.isPaused}
-                    size="large"
-                    style={{
-                      borderRadius: '8px',
-                      minWidth: '60px',
-                      height: '40px'
-                    }}
-                  >
-                    Send
-                  </Button>
-                </Tooltip>
-                
-                {isInterviewActive && (
-                  <Tooltip title="Get a hint for the current question">
-                    <Button
-                      type="default"
-                      icon={<BulbOutlined />}
-                      size="small"
-                      style={{
-                        borderRadius: '6px',
-                        fontSize: '12px'
-                      }}
-                      onClick={() => {
-                        if (currentQuestion) {
-                          const hints = getQuestionHint(currentQuestion);
-                          message.info(hints, 5);
-                        }
-                      }}
-                    >
-                      Hint
-                    </Button>
-                  </Tooltip>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <span style={{ fontWeight: 'bold', color: '#1890ff', fontSize: '16px' }}>
+                  Question {currentCandidate.currentQuestionIndex + 1} of {questions.length}
+                </span>
+                {questions[currentCandidate.currentQuestionIndex] && (
+                  <span style={{ 
+                    background: questions[currentCandidate.currentQuestionIndex].difficulty === 'easy' ? '#52c41a' : 
+                               questions[currentCandidate.currentQuestionIndex].difficulty === 'medium' ? '#faad14' : '#ff4d4f',
+                    color: 'white',
+                    padding: '4px 12px',
+                    borderRadius: '16px',
+                    fontSize: '12px',
+                    fontWeight: 'bold'
+                  }}>
+                    {questions[currentCandidate.currentQuestionIndex].difficulty.toUpperCase()}
+                  </span>
                 )}
               </div>
+              
+              {/* Timer Display */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  background: timeLeft <= 10 ? '#ff4d4f' : timeLeft <= 30 ? '#faad14' : '#52c41a',
+                  color: 'white',
+                  padding: '8px 16px',
+                  borderRadius: '20px',
+                  fontWeight: 'bold',
+                  fontSize: '16px',
+                  minWidth: '80px',
+                  textAlign: 'center',
+                  animation: timeLeft <= 10 ? 'pulse 1s infinite' : 'none'
+                }}>
+                  {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
+                </div>
+                <Progress
+                  type="circle"
+                  size={40}
+                  percent={Math.round((timeLeft / (questions[currentCandidate.currentQuestionIndex]?.timeLimit || 30)) * 100)}
+                  strokeColor={timeLeft <= 10 ? '#ff4d4f' : timeLeft <= 30 ? '#faad14' : '#52c41a'}
+                  showInfo={false}
+                />
+              </div>
+            </div>
+
+            {/* Question and Options */}
+            <Card style={{ 
+              borderRadius: '0 0 12px 12px',
+              border: '1px solid #d9d9d9',
+              borderTop: 'none'
+            }}>
+              {questions[currentCandidate.currentQuestionIndex] && (
+                <div>
+                  {/* Question Text */}
+                  <div style={{ 
+                    marginBottom: '24px',
+                    padding: '20px',
+                    background: '#fafafa',
+                    borderRadius: '8px',
+                    border: '1px solid #f0f0f0'
+                  }}>
+                    <h3 style={{ 
+                      margin: 0, 
+                      fontSize: '18px', 
+                      color: '#262626',
+                      lineHeight: '1.5'
+                    }}>
+                      {questions[currentCandidate.currentQuestionIndex].text}
+                    </h3>
+                  </div>
+
+                  {/* Multiple Choice Options */}
+                  <div style={{ marginBottom: '20px' }}>
+                    <Radio.Group
+                      value={selectedOption}
+                      onChange={(e) => setSelectedOption(e.target.value)}
+                      style={{ width: '100%' }}
+                    >
+                      {questions[currentCandidate.currentQuestionIndex].options?.map((option, index) => (
+                        <div key={index} style={{ marginBottom: '12px' }}>
+                          <Card
+                            hoverable
+                            onClick={() => handleOptionSelect(option)}
+                            style={{
+                              cursor: 'pointer',
+                              border: selectedOption === option ? '2px solid #1890ff' : '1px solid #f0f0f0',
+                              background: selectedOption === option ? '#f0f8ff' : '#fff',
+                              transition: 'all 0.3s ease'
+                            }}
+                          >
+                            <Radio value={option} style={{ 
+                              fontSize: '16px',
+                              fontWeight: '500',
+                              color: '#262626'
+                            }}>
+                              {option}
+                            </Radio>
+                          </Card>
+                        </div>
+                      ))}
+                    </Radio.Group>
+                  </div>
+
+                  {/* Skip Button */}
+                  <div style={{ textAlign: 'center', marginTop: '20px' }}>
+                    <Button
+                      type="default"
+                      onClick={() => handleOptionSelect('(Skipped)')}
+                      style={{ 
+                        minWidth: '120px',
+                        height: '40px'
+                      }}
+                    >
+                      Skip Question
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </Card>
+          </div>
+        ) : (
+          // Regular Chat Input (when not in interview)
+          <div style={{ 
+            display: 'flex', 
+            gap: '12px',
+            padding: '16px',
+            background: '#fff',
+            border: '1px solid #f0f0f0',
+            borderRadius: '8px',
+            margin: '16px'
+          }}>
+            <Input.TextArea
+              value={currentAnswer}
+              onChange={(e) => setCurrentAnswer(e.target.value)}
+              placeholder="Type your message here..."
+              autoSize={{ minRows: 3, maxRows: 8 }}
+              maxLength={1000}
+              style={{ 
+                flex: 1,
+                fontSize: '14px',
+                lineHeight: '1.6'
+              }}
+              onPressEnter={(e) => {
+                if (e.shiftKey) return;
+                e.preventDefault();
+                handleSendMessage();
+              }}
+            />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <Button
+                type="primary"
+                icon={<SendOutlined />}
+                onClick={handleSendMessage}
+                disabled={!currentAnswer.trim()}
+                style={{ 
+                  minWidth: '80px',
+                  height: '40px',
+                  fontWeight: 'bold'
+                }}
+              >
+                Send
+              </Button>
             </div>
           </div>
         )}

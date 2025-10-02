@@ -143,7 +143,7 @@ const WelcomeBackModal: React.FC<WelcomeBackModalProps> = ({ visible, onClose })
                 <Text strong style={{ fontSize: '16px' }}>Interview Progress</Text>
                 <div style={{ marginTop: '8px' }}>
                   <Progress
-                    percent={typeof progress === 'object' ? progress.progressPercent : 0}
+                    percent={typeof progress === 'object' && progress ? progress.progressPercent : 0}
                     strokeColor={{
                       '0%': '#667eea',
                       '100%': '#764ba2',
@@ -151,7 +151,7 @@ const WelcomeBackModal: React.FC<WelcomeBackModalProps> = ({ visible, onClose })
                     style={{ marginBottom: '8px' }}
                   />
                   <Text type="secondary">
-                    {typeof progress === 'object' && `Question ${progress.questionsAnswered + 1} of ${progress.totalQuestions}`}
+                    {typeof progress === 'object' && progress && `Question ${progress.questionsAnswered + 1} of ${progress.totalQuestions}`}
                   </Text>
                 </div>
               </div>
@@ -162,7 +162,7 @@ const WelcomeBackModal: React.FC<WelcomeBackModalProps> = ({ visible, onClose })
                 <div style={{ textAlign: 'center' }}>
                   <CheckCircleOutlined style={{ fontSize: '24px', color: '#52c41a' }} />
                   <div style={{ marginTop: '4px' }}>
-                    <Text strong>{typeof progress === 'object' ? progress.questionsAnswered : 0}</Text>
+                    <Text strong>{typeof progress === 'object' && progress ? progress.questionsAnswered : 0}</Text>
                     <br />
                     <Text type="secondary" style={{ fontSize: '12px' }}>Completed</Text>
                   </div>
@@ -172,7 +172,7 @@ const WelcomeBackModal: React.FC<WelcomeBackModalProps> = ({ visible, onClose })
                   <ThunderboltOutlined style={{ fontSize: '24px', color: '#fa8c16' }} />
                   <div style={{ marginTop: '4px' }}>
                     <Text strong>
-                      {typeof progress === 'object' ? progress.totalQuestions - progress.questionsAnswered : 6}
+                      {typeof progress === 'object' && progress ? progress.totalQuestions - progress.questionsAnswered : 6}
                     </Text>
                     <br />
                     <Text type="secondary" style={{ fontSize: '12px' }}>Remaining</Text>

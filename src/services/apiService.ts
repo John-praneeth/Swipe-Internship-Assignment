@@ -33,15 +33,45 @@ class ApiClient {
 
     try {
       const response = await fetch(url, config);
-      const data = await response.json();
+      
+      // Handle different response types
+      let data;
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        data = { message: await response.text() };
+      }
 
       if (!response.ok) {
-        throw new Error(data.error || `HTTP error! status: ${response.status}`);
+        // Handle specific HTTP status codes
+        const errorMessage = data.error || data.message || `HTTP error! status: ${response.status}`;
+        
+        if (response.status === 401) {
+          // Token expired or invalid - clear auth
+          authToken = null;
+          localStorage.removeItem('auth_token');
+          throw new Error('Authentication expired. Please login again.');
+        } else if (response.status === 403) {
+          throw new Error('Access denied. Insufficient permissions.');
+        } else if (response.status === 404) {
+          throw new Error('Resource not found.');
+        } else if (response.status >= 500) {
+          throw new Error('Server error. Please try again later.');
+        }
+        
+        throw new Error(errorMessage);
       }
 
       return data;
     } catch (error) {
       console.error(`API request failed: ${endpoint}`, error);
+      
+      // Network error handling
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Network error. Please check your connection.');
+      }
+      
       throw error;
     }
   }

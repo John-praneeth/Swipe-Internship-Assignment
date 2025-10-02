@@ -13,7 +13,7 @@ class MockAuthDatabase {
         id: 'admin-001',
         username: 'admin',
         email: 'admin@demo.com',
-        password: 'admin123',
+        password: 'password123',
         role: UserRole.ADMIN,
         createdAt: Date.now(),
         isActive: true
@@ -22,7 +22,7 @@ class MockAuthDatabase {
         id: 'interviewer-001',
         username: 'interviewer',
         email: 'interviewer@demo.com',
-        password: 'interviewer123',
+        password: 'password123',
         role: UserRole.INTERVIEWER,
         createdAt: Date.now(),
         isActive: true
@@ -31,7 +31,7 @@ class MockAuthDatabase {
         id: 'interviewee-001',
         username: 'interviewee',
         email: 'interviewee@demo.com',
-        password: 'interviewee123',
+        password: 'password123',
         role: UserRole.INTERVIEWEE,
         createdAt: Date.now(),
         isActive: true
@@ -155,22 +155,26 @@ class AuthService {
     };
   }
 
-  async register(userData: RegisterData): Promise<{ user: User; token: string } | null> {
-    // Check if user already exists
-    if (this.db.getUserByEmail(userData.email)) {
-      throw new Error('User with this email already exists');
+  async register(userData: RegisterData): Promise<{ user: User; token: string } | { error: string }> {
+    try {
+      // Check if user already exists
+      if (this.db.getUserByEmail(userData.email)) {
+        return { error: 'User with this email already exists' };
+      }
+
+      // Create new user
+      const user = this.db.createUser(userData);
+
+      // Create session
+      const session = this.db.createSession(user.id);
+
+      return {
+        user: { ...user, password: '' }, // Don't send password to client
+        token: session.token
+      };
+    } catch (error) {
+      return { error: 'Registration failed' };
     }
-
-    // Create new user
-    const user = this.db.createUser(userData);
-
-    // Create session
-    const session = this.db.createSession(user.id);
-
-    return {
-      user: { ...user, password: '' }, // Don't send password to client
-      token: session.token
-    };
   }
 
   async validateSession(token: string): Promise<User | null> {
@@ -198,14 +202,18 @@ class AuthService {
     return this.db.getAllUsers().map(user => ({ ...user, password: '' }));
   }
 
-  async createUser(userData: RegisterData): Promise<User | null> {
-    // Check if user already exists
-    if (this.db.getUserByEmail(userData.email)) {
-      throw new Error('User with this email already exists');
-    }
+  async createUser(userData: RegisterData): Promise<User | { error: string }> {
+    try {
+      // Check if user already exists
+      if (this.db.getUserByEmail(userData.email)) {
+        return { error: 'User with this email already exists' };
+      }
 
-    const user = this.db.createUser(userData);
-    return { ...user, password: '' }; // Don't send password to client
+      const user = this.db.createUser(userData);
+      return { ...user, password: '' }; // Don't send password to client
+    } catch (error) {
+      return { error: 'Failed to create user' };
+    }
   }
 
   async updateUser(id: string, updates: Partial<User>): Promise<User | null> {

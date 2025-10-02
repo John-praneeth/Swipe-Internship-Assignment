@@ -188,9 +188,9 @@ const Login: React.FC = () => {
               }}>
                 <Text style={{ color: '#6c757d', fontSize: '14px' }}>
                   <strong>Demo Accounts:</strong><br />
-                  Admin: admin@demo.com / admin123<br />
-                  Interviewer: interviewer@demo.com / interviewer123<br />
-                  Interviewee: interviewee@demo.com / interviewee123<br /><br />
+                  Admin: admin@demo.com / password123<br />
+                  Interviewer: interviewer@demo.com / password123<br />
+                  Interviewee: interviewee@demo.com / password123<br /><br />
                   <Text style={{ color: '#856404', fontSize: '13px' }}>
                     <strong>Note:</strong> Admin & Interviewer accounts can only be created through the Admin Portal.
                   </Text>

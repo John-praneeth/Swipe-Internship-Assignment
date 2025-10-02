@@ -1,9 +1,8 @@
 import express, { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth';
+import { dbManager } from '../database/manager';
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // @route   GET /api/candidates
 // @desc    Get all candidates

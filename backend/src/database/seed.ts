@@ -46,37 +46,100 @@ async function main() {
 
   console.log('✅ Created default users');
 
-  // Create sample questions
-    const sampleQuestions = [
+  // Create sample questions (mix of multiple choice and text)
+  const sampleQuestions = [
+    // Easy Multiple Choice Questions
     {
-      text: 'Tell me about yourself and your background.',
-      difficulty: 'EASY' as const,
-      timeLimit: 300,
-      category: 'General'
+      text: 'What does HTML stand for?',
+      difficulty: 'EASY',
+      timeLimit: 30,
+      category: 'Web Fundamentals',
+      type: 'MULTIPLE_CHOICE',
+      options: JSON.stringify([
+        'Hyper Text Markup Language',
+        'High Tech Modern Language',
+        'Home Tool Markup Language',
+        'Hyperlink and Text Markup Language'
+      ]),
+      correctAnswer: 'Hyper Text Markup Language',
+      explanation: 'HTML stands for Hyper Text Markup Language, which is the standard markup language for creating web pages.'
     },
     {
-      text: 'What are your greatest strengths and how do they apply to this role?',
-      difficulty: 'EASY' as const,
-      timeLimit: 240,
-      category: 'General'
+      text: 'Which of the following is NOT a JavaScript data type?',
+      difficulty: 'EASY',
+      timeLimit: 30,
+      category: 'JavaScript Fundamentals',
+      type: 'MULTIPLE_CHOICE',
+      options: JSON.stringify([
+        'String',
+        'Boolean',
+        'Float',
+        'Number'
+      ]),
+      correctAnswer: 'Float',
+      explanation: 'JavaScript has Number type for all numeric values. There is no separate Float type.'
+    },
+    // Medium Multiple Choice Questions
+    {
+      text: 'What is the purpose of the useEffect hook in React?',
+      difficulty: 'MEDIUM',
+      timeLimit: 30,
+      category: 'React Hooks',
+      type: 'MULTIPLE_CHOICE',
+      options: JSON.stringify([
+        'To manage component state',
+        'To perform side effects in functional components',
+        'To create custom hooks',
+        'To handle form submissions'
+      ]),
+      correctAnswer: 'To perform side effects in functional components',
+      explanation: 'useEffect is used to perform side effects like API calls, subscriptions, or manually changing the DOM in React functional components.'
     },
     {
-      text: 'Describe a challenging project you worked on and how you overcame obstacles.',
-      difficulty: 'MEDIUM' as const,
-      timeLimit: 480,
-      category: 'Experience'
+      text: 'Which HTTP method is typically used to update existing data?',
+      difficulty: 'MEDIUM',
+      timeLimit: 30,
+      category: 'Web APIs',
+      type: 'MULTIPLE_CHOICE',
+      options: JSON.stringify([
+        'GET',
+        'POST',
+        'PUT',
+        'DELETE'
+      ]),
+      correctAnswer: 'PUT',
+      explanation: 'PUT is typically used to update existing resources, while POST creates new resources.'
+    },
+    // Hard Multiple Choice Questions
+    {
+      text: 'What is the time complexity of searching in a balanced binary search tree?',
+      difficulty: 'HARD',
+      timeLimit: 30,
+      category: 'Data Structures & Algorithms',
+      type: 'MULTIPLE_CHOICE',
+      options: JSON.stringify([
+        'O(1)',
+        'O(log n)',
+        'O(n)',
+        'O(n log n)'
+      ]),
+      correctAnswer: 'O(log n)',
+      explanation: 'In a balanced BST, search operations have O(log n) time complexity because we can eliminate half the nodes at each level.'
     },
     {
-      text: 'How do you handle working under pressure and tight deadlines?',
-      difficulty: 'MEDIUM' as const,
-      timeLimit: 300,
-      category: 'Behavioral'
-    },
-    {
-      text: 'Describe a complex technical problem you solved recently.',
-      difficulty: 'HARD' as const,
-      timeLimit: 600,
-      category: 'Technical'
+      text: 'In microservices architecture, what is the purpose of an API Gateway?',
+      difficulty: 'HARD',
+      timeLimit: 30,
+      category: 'System Architecture',
+      type: 'MULTIPLE_CHOICE',
+      options: JSON.stringify([
+        'To store data',
+        'To provide a single entry point and handle cross-cutting concerns',
+        'To replace databases',
+        'To compile code'
+      ]),
+      correctAnswer: 'To provide a single entry point and handle cross-cutting concerns',
+      explanation: 'An API Gateway acts as a single entry point for clients and handles concerns like authentication, rate limiting, and request routing.'
     }
   ];
 

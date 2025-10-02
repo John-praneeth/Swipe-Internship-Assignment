@@ -5,7 +5,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -14,7 +14,7 @@ model User {
   username  String   @unique
   email     String   @unique
   password  String
-  role      UserRole @default(INTERVIEWEE)
+  role      String   @default("INTERVIEWEE") // ADMIN, INTERVIEWER, INTERVIEWEE
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -42,23 +42,23 @@ model Session {
 }
 
 model Candidate {
-  id                   String            @id @default(uuid())
+  id                   String    @id @default(uuid())
   name                 String
   email                String
   phone                String
   resumeFileName       String?
   resumeFileUrl        String?
   resumeText           String?
-  currentQuestionIndex Int               @default(0)
-  status               CandidateStatus   @default(COLLECTING_INFO)
-  isPaused             Boolean           @default(false)
+  currentQuestionIndex Int       @default(0)
+  status               String    @default("COLLECTING_INFO") // COLLECTING_INFO, IN_PROGRESS, COMPLETED
+  isPaused             Boolean   @default(false)
   startTime            DateTime?
   endTime              DateTime?
   finalScore           Int?
   summary              String?
   remainingTime        Int?
-  createdAt            DateTime          @default(now())
-  updatedAt            DateTime          @updatedAt
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   // Foreign Keys
   interviewerId String?
@@ -74,14 +74,18 @@ model Candidate {
 }
 
 model Question {
-  id         String           @id @default(uuid())
-  text       String
-  difficulty QuestionDifficulty
-  timeLimit  Int              // in seconds
-  category   String
-  isActive   Boolean          @default(true)
-  createdAt  DateTime         @default(now())
-  updatedAt  DateTime         @updatedAt
+  id            String   @id @default(uuid())
+  text          String
+  difficulty    String   // EASY, MEDIUM, HARD
+  timeLimit     Int      // in seconds
+  category      String
+  type          String   @default("TEXT") // MULTIPLE_CHOICE, TEXT
+  options       String?  // JSON string for multiple choice options
+  correctAnswer String?  // Correct answer for multiple choice
+  explanation   String?  // Explanation for the answer
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   // Relations
   answers Answer[]
@@ -90,13 +94,15 @@ model Question {
 }
 
 model Answer {
-  id         String             @id @default(uuid())
-  answer     String
-  timeSpent  Int                // in seconds
-  difficulty QuestionDifficulty
-  score      Int?
-  feedback   String?
-  createdAt  DateTime           @default(now())
+  id             String   @id @default(uuid())
+  answer         String
+  timeSpent      Int      // in seconds
+  difficulty     String   // EASY, MEDIUM, HARD
+  score          Int?
+  feedback       String?
+  isCorrect      Boolean? // For multiple choice questions
+  selectedOption String?  // Selected option for multiple choice
+  createdAt      DateTime @default(now())
 
   // Foreign Keys
   candidateId String
@@ -110,13 +116,13 @@ model Answer {
 }
 
 model ChatMessage {
-  id          String          @id @default(uuid())
-  type        MessageType
+  id          String   @id @default(uuid())
+  type        String   // SYSTEM, USER, QUESTION, TIMER_WARNING, FEEDBACK
   content     String
   questionId  String?
-  difficulty  QuestionDifficulty?
+  difficulty  String?  // EASY, MEDIUM, HARD
   timeLimit   Int?
-  timestamp   DateTime        @default(now())
+  timestamp   DateTime @default(now())
 
   // Foreign Keys
   candidateId String
@@ -127,29 +133,9 @@ model ChatMessage {
   @@map("chat_messages")
 }
 
-// Enums
-enum UserRole {
-  ADMIN
-  INTERVIEWER
-  INTERVIEWEE
-}
-
-enum CandidateStatus {
-  COLLECTING_INFO
-  IN_PROGRESS
-  COMPLETED
-}
-
-enum QuestionDifficulty {
-  EASY
-  MEDIUM
-  HARD
-}
-
-enum MessageType {
-  SYSTEM
-  USER
-  QUESTION
-  TIMER_WARNING
-  FEEDBACK
-}
+// Note: SQLite doesn't support enums, so we use String fields with comments indicating valid values
+// UserRole: ADMIN, INTERVIEWER, INTERVIEWEE
+// CandidateStatus: COLLECTING_INFO, IN_PROGRESS, COMPLETED  
+// QuestionDifficulty: EASY, MEDIUM, HARD
+// QuestionType: MULTIPLE_CHOICE, TEXT
+// MessageType: SYSTEM, USER, QUESTION, TIMER_WARNING, FEEDBACK

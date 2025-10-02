@@ -8,91 +8,247 @@ export const generateQuestions = (): Question[] => {
     easy: [
       {
         id: 'easy_1',
-        text: 'What is the difference between `let`, `const`, and `var` in JavaScript? Explain with examples.',
+        text: 'What does HTML stand for?',
         difficulty: 'easy' as const,
-        timeLimit: 20,
-        category: 'JavaScript Fundamentals',
+        timeLimit: 30,
+        category: 'Web Fundamentals',
+        type: 'multiple-choice' as const,
+        options: [
+          'Hyper Text Markup Language',
+          'High Tech Modern Language',
+          'Home Tool Markup Language',
+          'Hyperlink and Text Markup Language'
+        ],
+        correctAnswer: 'Hyper Text Markup Language',
+        explanation: 'HTML stands for Hyper Text Markup Language, which is the standard markup language for creating web pages.'
       },
       {
         id: 'easy_2',
-        text: 'Explain what JSX is and why it\'s used in React. What are its advantages over plain JavaScript?',
+        text: 'Which of the following is NOT a JavaScript data type?',
         difficulty: 'easy' as const,
-        timeLimit: 20,
-        category: 'React Basics',
+        timeLimit: 30,
+        category: 'JavaScript Fundamentals',
+        type: 'multiple-choice' as const,
+        options: [
+          'String',
+          'Boolean',
+          'Float',
+          'Number'
+        ],
+        correctAnswer: 'Float',
+        explanation: 'JavaScript has Number type for all numeric values. There is no separate Float type.'
       },
       {
         id: 'easy_3',
-        text: 'What is the DOM and how does virtual DOM in React improve performance?',
+        text: 'What is the correct way to declare a variable in JavaScript (ES6+)?',
         difficulty: 'easy' as const,
-        timeLimit: 20,
-        category: 'Web Development',
+        timeLimit: 30,
+        category: 'JavaScript Fundamentals',
+        type: 'multiple-choice' as const,
+        options: [
+          'var myVariable = 5;',
+          'let myVariable = 5;',
+          'const myVariable = 5;',
+          'Both let and const are correct'
+        ],
+        correctAnswer: 'Both let and const are correct',
+        explanation: 'Both let and const are modern ways to declare variables in ES6+. Use const for constants and let for variables that will change.'
       },
       {
         id: 'easy_4',
-        text: 'Explain the difference between == and === operators in JavaScript.',
+        text: 'Which CSS property is used to change the text color?',
         difficulty: 'easy' as const,
-        timeLimit: 20,
-        category: 'JavaScript Fundamentals',
+        timeLimit: 30,
+        category: 'CSS Basics',
+        type: 'multiple-choice' as const,
+        options: [
+          'text-color',
+          'font-color',
+          'color',
+          'text-style'
+        ],
+        correctAnswer: 'color',
+        explanation: 'The CSS color property is used to set the color of text.'
+      },
+      {
+        id: 'easy_5',
+        text: 'What does CSS stand for?',
+        difficulty: 'easy' as const,
+        timeLimit: 30,
+        category: 'CSS Basics',
+        type: 'multiple-choice' as const,
+        options: [
+          'Computer Style Sheets',
+          'Cascading Style Sheets',
+          'Creative Style Sheets',
+          'Colorful Style Sheets'
+        ],
+        correctAnswer: 'Cascading Style Sheets',
+        explanation: 'CSS stands for Cascading Style Sheets, used for styling web pages.'
       }
     ],
     medium: [
       {
         id: 'medium_1',
-        text: 'How do React hooks like useState and useEffect work? Provide an example of using useEffect for API calls.',
+        text: 'What is the purpose of the useEffect hook in React?',
         difficulty: 'medium' as const,
-        timeLimit: 60,
+        timeLimit: 30,
         category: 'React Hooks',
+        type: 'multiple-choice' as const,
+        options: [
+          'To manage component state',
+          'To perform side effects in functional components',
+          'To create custom hooks',
+          'To handle form submissions'
+        ],
+        correctAnswer: 'To perform side effects in functional components',
+        explanation: 'useEffect is used to perform side effects like API calls, subscriptions, or manually changing the DOM in React functional components.'
       },
       {
         id: 'medium_2',
-        text: 'What is the difference between SQL and NoSQL databases? When would you choose one over the other?',
+        text: 'Which HTTP method is typically used to update existing data?',
         difficulty: 'medium' as const,
-        timeLimit: 60,
-        category: 'Database Design',
+        timeLimit: 30,
+        category: 'Web APIs',
+        type: 'multiple-choice' as const,
+        options: [
+          'GET',
+          'POST',
+          'PUT',
+          'DELETE'
+        ],
+        correctAnswer: 'PUT',
+        explanation: 'PUT is typically used to update existing resources, while POST creates new resources.'
       },
       {
         id: 'medium_3',
-        text: 'Explain how promises work in JavaScript. How would you handle errors in promise chains?',
+        text: 'What is the difference between == and === in JavaScript?',
         difficulty: 'medium' as const,
-        timeLimit: 60,
-        category: 'Asynchronous JavaScript',
+        timeLimit: 30,
+        category: 'JavaScript Fundamentals',
+        type: 'multiple-choice' as const,
+        options: [
+          '== checks type and value, === checks only value',
+          '== checks only value, === checks type and value',
+          'They are exactly the same',
+          '== is faster than ==='
+        ],
+        correctAnswer: '== checks only value, === checks type and value',
+        explanation: '== performs type coercion and compares values, while === compares both type and value without coercion.'
       },
       {
         id: 'medium_4',
-        text: 'What is state management in React? Compare useState, useContext, and external libraries like Redux.',
+        text: 'Which of the following is a NoSQL database?',
         difficulty: 'medium' as const,
-        timeLimit: 60,
-        category: 'State Management',
+        timeLimit: 30,
+        category: 'Database Systems',
+        type: 'multiple-choice' as const,
+        options: [
+          'MySQL',
+          'PostgreSQL',
+          'MongoDB',
+          'SQLite'
+        ],
+        correctAnswer: 'MongoDB',
+        explanation: 'MongoDB is a popular NoSQL document database, while the others are SQL databases.'
+      },
+      {
+        id: 'medium_5',
+        text: 'What is the purpose of async/await in JavaScript?',
+        difficulty: 'medium' as const,
+        timeLimit: 30,
+        category: 'Asynchronous JavaScript',
+        type: 'multiple-choice' as const,
+        options: [
+          'To make code run faster',
+          'To handle asynchronous operations more readably',
+          'To create multiple threads',
+          'To handle errors automatically'
+        ],
+        correctAnswer: 'To handle asynchronous operations more readably',
+        explanation: 'async/await provides a cleaner, more readable way to handle asynchronous operations compared to callbacks or promise chains.'
       }
     ],
     hard: [
       {
         id: 'hard_1',
-        text: 'Design a scalable architecture for a real-time chat application. Consider both frontend and backend components, data flow, and scalability challenges.',
+        text: 'What is the time complexity of searching in a balanced binary search tree?',
         difficulty: 'hard' as const,
-        timeLimit: 120,
-        category: 'System Design',
+        timeLimit: 30,
+        category: 'Data Structures & Algorithms',
+        type: 'multiple-choice' as const,
+        options: [
+          'O(1)',
+          'O(log n)',
+          'O(n)',
+          'O(n log n)'
+        ],
+        correctAnswer: 'O(log n)',
+        explanation: 'In a balanced BST, search operations have O(log n) time complexity because we can eliminate half the nodes at each level.'
       },
       {
         id: 'hard_2',
-        text: 'Explain the concept of closures in JavaScript. Provide a practical use case where closures solve a real-world problem in web development.',
+        text: 'Which design pattern is commonly used for managing application state in large React applications?',
         difficulty: 'hard' as const,
-        timeLimit: 120,
-        category: 'Advanced JavaScript',
+        timeLimit: 30,
+        category: 'React Architecture',
+        type: 'multiple-choice' as const,
+        options: [
+          'Singleton Pattern',
+          'Observer Pattern',
+          'Flux/Redux Pattern',
+          'Factory Pattern'
+        ],
+        correctAnswer: 'Flux/Redux Pattern',
+        explanation: 'The Flux architecture pattern, implemented by Redux, provides predictable state management for large React applications.'
       },
       {
         id: 'hard_3',
-        text: 'How would you optimize a React application for performance? Discuss techniques like code splitting, memoization, and virtual scrolling.',
+        text: 'What is the main advantage of using a CDN (Content Delivery Network)?',
         difficulty: 'hard' as const,
-        timeLimit: 120,
-        category: 'Performance Optimization',
+        timeLimit: 30,
+        category: 'Web Performance',
+        type: 'multiple-choice' as const,
+        options: [
+          'Reduces server costs',
+          'Improves security',
+          'Reduces latency by serving content from geographically closer servers',
+          'Automatically optimizes images'
+        ],
+        correctAnswer: 'Reduces latency by serving content from geographically closer servers',
+        explanation: 'CDNs cache content on servers distributed globally, serving users from the nearest location to reduce latency.'
       },
       {
         id: 'hard_4',
-        text: 'Design a distributed system for handling user authentication across multiple microservices. How would you ensure security and scalability?',
+        text: 'In microservices architecture, what is the purpose of an API Gateway?',
         difficulty: 'hard' as const,
-        timeLimit: 120,
+        timeLimit: 30,
+        category: 'System Architecture',
+        type: 'multiple-choice' as const,
+        options: [
+          'To store data',
+          'To provide a single entry point and handle cross-cutting concerns',
+          'To replace databases',
+          'To compile code'
+        ],
+        correctAnswer: 'To provide a single entry point and handle cross-cutting concerns',
+        explanation: 'An API Gateway acts as a single entry point for clients and handles concerns like authentication, rate limiting, and request routing.'
+      },
+      {
+        id: 'hard_5',
+        text: 'What is the CAP theorem in distributed systems?',
+        difficulty: 'hard' as const,
+        timeLimit: 30,
         category: 'Distributed Systems',
+        type: 'multiple-choice' as const,
+        options: [
+          'Consistency, Availability, Performance',
+          'Consistency, Availability, Partition tolerance',
+          'Concurrency, Availability, Performance',
+          'Consistency, Accuracy, Partition tolerance'
+        ],
+        correctAnswer: 'Consistency, Availability, Partition tolerance',
+        explanation: 'CAP theorem states that distributed systems can only guarantee two out of three: Consistency, Availability, and Partition tolerance.'
       }
     ]
   };
@@ -117,7 +273,7 @@ function shuffleArray<T>(array: T[]): T[] {
   return shuffled;
 }
 
-// Enhanced scoring algorithm with detailed analysis
+// Enhanced scoring algorithm with support for multiple choice questions
 export const generateFinalScore = (answers: any[]): number => {
   let totalScore = 0;
   let maxPossibleScore = 0;
@@ -146,8 +302,16 @@ export const generateFinalScore = (answers: any[]): number => {
     if (answer.answer.includes('(No answer provided')) {
       // No answer provided - 0 score
       questionScore = 0;
+    } else if (answer.isCorrect !== undefined) {
+      // Multiple choice question - binary scoring
+      if (answer.isCorrect) {
+        questionScore = maxQuestionScore;
+      } else {
+        // Partial credit for attempting
+        questionScore = Math.round(maxQuestionScore * 0.1);
+      }
     } else {
-      // Enhanced scoring based on multiple factors
+      // Text-based question - enhanced scoring based on multiple factors
       const answerText = answer.answer.toLowerCase();
       const answerLength = answer.answer.trim().length;
       

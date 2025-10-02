@@ -15,6 +15,7 @@ import {
   Timeline,
   Badge,
   Tabs,
+  message,
 } from 'antd';
 import { 
   EyeOutlined, 
@@ -25,11 +26,13 @@ import {
   FileTextOutlined,
   FilePdfOutlined,
   FileWordOutlined,
-  CopyOutlined
+  CopyOutlined,
+  PlusOutlined,
+  PlayCircleOutlined
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { RootState } from '../store/store';
-import { selectCandidate } from '../store/interviewSlice';
+import { selectCandidate, resetCurrentCandidate } from '../store/interviewSlice';
 import { Candidate } from '../types';
 import dayjs from 'dayjs';
 
@@ -286,6 +289,7 @@ const InterviewerTab: React.FC = () => {
   const [searchText, setSearchText] = React.useState('');
   const [selectedCandidate, setSelectedCandidate] = React.useState<Candidate | null>(null);
   const [detailModalVisible, setDetailModalVisible] = React.useState(false);
+  const [startInterviewModalVisible, setStartInterviewModalVisible] = React.useState(false);
 
   const filteredCandidates = candidates.filter(candidate =>
     candidate.name.toLowerCase().includes(searchText.toLowerCase()) ||
@@ -296,6 +300,16 @@ const InterviewerTab: React.FC = () => {
     setSelectedCandidate(candidate);
     setDetailModalVisible(true);
     dispatch(selectCandidate(candidate.id));
+  };
+
+  const handleStartNewInterview = () => {
+    setStartInterviewModalVisible(true);
+  };
+
+  const confirmStartNewInterview = () => {
+    dispatch(resetCurrentCandidate());
+    setStartInterviewModalVisible(false);
+    message.success('Ready to start a new interview! Please go to the AI Interview tab to begin.');
   };
 
   const getStatusBadge = (status: string) => {
@@ -436,10 +450,22 @@ const InterviewerTab: React.FC = () => {
   return (
     <div style={{ padding: 24 }}>
       <div style={{ marginBottom: 24 }}>
-        <Title level={2}>
-          <TrophyOutlined style={{ marginRight: 8 }} />
-          Interview Dashboard
-        </Title>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <Title level={2} style={{ margin: 0 }}>
+            <TrophyOutlined style={{ marginRight: 8 }} />
+            Interview Dashboard
+          </Title>
+          <Space>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={handleStartNewInterview}
+              size="large"
+            >
+              Start New Interview
+            </Button>
+          </Space>
+        </div>
         
         <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
           <Col span={6}>
@@ -520,6 +546,35 @@ const InterviewerTab: React.FC = () => {
           setSelectedCandidate(null);
         }}
       />
+
+      {/* Start New Interview Modal */}
+      <Modal
+        title="Start New Interview"
+        open={startInterviewModalVisible}
+        onOk={confirmStartNewInterview}
+        onCancel={() => setStartInterviewModalVisible(false)}
+        okText="Start Interview"
+        cancelText="Cancel"
+        okButtonProps={{ icon: <PlayCircleOutlined /> }}
+      >
+        <div style={{ padding: '16px 0' }}>
+          <p>
+            <strong>Ready to conduct a new interview?</strong>
+          </p>
+          <p>
+            This will prepare the system for a new candidate interview. You'll be able to:
+          </p>
+          <ul style={{ marginLeft: 20, marginTop: 12 }}>
+            <li>Upload and process the candidate's resume</li>
+            <li>Generate personalized questions based on their background</li>
+            <li>Conduct both AI chat and coding interviews</li>
+            <li>Track progress and evaluate responses in real-time</li>
+          </ul>
+          <p style={{ marginTop: 16, color: '#666' }}>
+            After clicking "Start Interview", please navigate to the <strong>AI Interview</strong> tab to begin the process.
+          </p>
+        </div>
+      </Modal>
     </div>
   );
 };

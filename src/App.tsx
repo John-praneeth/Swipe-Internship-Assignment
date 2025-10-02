@@ -9,18 +9,20 @@ import {
   SoundOutlined,
   LogoutOutlined,
   SettingFilled,
-  CrownOutlined
+  CrownOutlined,
+  CodeOutlined
 } from '@ant-design/icons';
 import { useAppSelector, useAppDispatch } from './store/store';
 import { setWelcomeBackModal, resetCurrentCandidate } from './store/interviewSlice';
 import { logoutUser, validateSession } from './store/authSlice';
-import IntervieweeTab from './components/IntervieweeTab.tsx';
-import InterviewerTab from './components/InterviewerTab.tsx';
-import WelcomeBackModal from './components/WelcomeBackModal.tsx';
-import Login from './components/Login.tsx';
+import IntervieweeTab from './components/IntervieweeTab';
+import InterviewerTab from './components/InterviewerTab';
+import WelcomeBackModal from './components/WelcomeBackModal';
+import Login from './components/Login';
 import './components/InterviewStyles.css';
-import AdminPortal from './components/AdminPortal.tsx';
-import ProtectedRoute from './components/ProtectedRoute.tsx';
+import AdminPortal from './components/AdminPortal';
+import ProtectedRoute from './components/ProtectedRoute';
+import CodingInterviewPlatform from './components/CodingInterviewPlatform';
 import { UserRole } from './types/auth';
 import { hybridStorage } from './services/integrationService';
 import './App.css';
@@ -30,7 +32,7 @@ const { Text } = Typography;
 
 const App: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { currentCandidate, showWelcomeBack, candidates } = useAppSelector((state) => state.interview);
+  const { currentCandidate, showWelcomeBack, candidates, isInterviewActive } = useAppSelector((state) => state.interview);
   const { isAuthenticated, currentUser } = useAppSelector((state) => state.auth);
   const [activeTab, setActiveTab] = useState('1');
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -55,38 +57,47 @@ const App: React.FC = () => {
   }, [dispatch, isAuthenticated, currentUser]);
 
   useEffect(() => {
-    // Check if there's an unfinished interview on app load
-    if (currentCandidate && (currentCandidate.isPaused || 
+    // Check if there's an unfinished interview on app load, but NOT during active interviews
+    if (currentCandidate && !isInterviewActive && (currentCandidate.isPaused || 
         (currentCandidate.status === 'in-progress' && currentCandidate.currentQuestionIndex > 0))) {
       dispatch(setWelcomeBackModal(true));
     }
-  }, [currentCandidate, dispatch]);
+  }, [currentCandidate, dispatch, isInterviewActive]);
 
   const handleLogout = async () => {
     await dispatch(logoutUser());
   };
 
-  // Play notification sounds
+  // Play notification sounds - optimized to prevent memory leaks
   const playSound = (type: 'success' | 'warning' | 'error') => {
     if (!soundEnabled) return;
     
-    const frequency = type === 'success' ? 800 : type === 'warning' ? 600 : 400;
-    const context = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const oscillator = context.createOscillator();
-    const gainNode = context.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(context.destination);
-    
-    oscillator.frequency.value = frequency;
-    oscillator.type = 'sine';
-    
-    gainNode.gain.setValueAtTime(0, context.currentTime);
-    gainNode.gain.linearRampToValueAtTime(0.2, context.currentTime + 0.1);
-    gainNode.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.5);
-    
-    oscillator.start(context.currentTime);
-    oscillator.stop(context.currentTime + 0.5);
+    try {
+      const frequency = type === 'success' ? 800 : type === 'warning' ? 600 : 400;
+      const context = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = context.createOscillator();
+      const gainNode = context.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(context.destination);
+      
+      oscillator.frequency.value = frequency;
+      oscillator.type = 'sine';
+      
+      gainNode.gain.setValueAtTime(0, context.currentTime);
+      gainNode.gain.linearRampToValueAtTime(0.2, context.currentTime + 0.1);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.5);
+      
+      oscillator.start(context.currentTime);
+      oscillator.stop(context.currentTime + 0.5);
+      
+      // Clean up audio context after sound completes
+      setTimeout(() => {
+        context.close().catch(() => {}); // Ignore errors if already closed
+      }, 600);
+    } catch (error) {
+      console.warn('Audio playback failed:', error);
+    }
   };
 
   // Show login if user is not authenticated
@@ -99,14 +110,14 @@ const App: React.FC = () => {
     const items: TabsProps['items'] = [];
     let keyCounter = 1;
 
-    // Only interviewees can take interviews
-    if (currentUser?.role === UserRole.INTERVIEWEE) {
+    // Interviewees and Interviewers can take/conduct interviews
+    if (currentUser?.role === UserRole.INTERVIEWEE || currentUser?.role === UserRole.INTERVIEWER || currentUser?.role === UserRole.ADMIN) {
       items.push({
         key: keyCounter.toString(),
         label: (
           <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 500 }}>
             <UserOutlined style={{ fontSize: 16 }} />
-            Interviewee
+            AI Interview
             {currentCandidate && (
               <span style={{ 
                 background: '#34a853', 
@@ -120,6 +131,18 @@ const App: React.FC = () => {
           </span>
         ),
         children: <IntervieweeTab />,
+      });
+      keyCounter++;
+
+      items.push({
+        key: keyCounter.toString(),
+        label: (
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 500 }}>
+            <CodeOutlined style={{ fontSize: 16 }} />
+            Coding Interview
+          </span>
+        ),
+        children: <CodingInterviewPlatform />,
       });
       keyCounter++;
     }

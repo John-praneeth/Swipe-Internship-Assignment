@@ -1,3 +1,25 @@
+export interface ProjectInfo {
+  title: string;
+  description: string;
+  technologies: string[];
+  duration?: string;
+  url?: string;
+}
+
+export interface ExperienceInfo {
+  company: string;
+  position: string;
+  duration: string;
+  description: string;
+}
+
+export interface EducationInfo {
+  institution: string;
+  degree: string;
+  duration: string;
+  gpa?: string;
+}
+
 export interface Candidate {
   id: string;
   name: string;
@@ -5,6 +27,11 @@ export interface Candidate {
   phone: string;
   resumeFile?: File;
   resumeText?: string;
+  projects: ProjectInfo[];
+  skills: string[];
+  experience: ExperienceInfo[];
+  education: EducationInfo[];
+  projectQuestions?: any[]; // CodingQuestion[] - avoiding circular import
   currentQuestionIndex: number;
   answers: Answer[];
   finalScore?: number;
@@ -24,6 +51,8 @@ export interface Answer {
   difficulty: QuestionDifficulty;
   score?: number;
   feedback?: string;
+  isCorrect?: boolean;
+  selectedOption?: string;
 }
 
 export interface Question {
@@ -32,6 +61,10 @@ export interface Question {
   difficulty: QuestionDifficulty;
   timeLimit: number; // in seconds
   category: string;
+  type: 'multiple-choice' | 'text';
+  options?: string[];
+  correctAnswer?: string;
+  explanation?: string;
 }
 
 export type QuestionDifficulty = 'easy' | 'medium' | 'hard';

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Card, 
+ 
   Table, 
   Button, 
   Modal, 
@@ -12,16 +12,19 @@ import {
   Popconfirm, 
   Tag,
   message,
-  Row,
-  Col
+
+
+  Tabs
 } from 'antd';
 import { 
   UserAddOutlined, 
   EditOutlined, 
   DeleteOutlined, 
   UserOutlined,
-  TeamOutlined
+  TeamOutlined,
+  DatabaseOutlined
 } from '@ant-design/icons';
+import DatabaseDashboard from './DatabaseDashboard';
 import { useAppDispatch, useAppSelector } from '../store/store';
 import { fetchAllUsers, createUserByAdmin, updateUserByAdmin, deleteUserByAdmin } from '../store/authSlice';
 import { UserRole, User } from '../types/auth';
@@ -191,58 +194,91 @@ const AdminPortal: React.FC = () => {
 
   return (
     <div style={{ padding: '20px', background: '#f5f5f5', minHeight: '100vh' }}>
-      <Row gutter={[16, 16]}>
-        <Col span={24}>
-          <Card style={{ borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center', 
-              marginBottom: '24px' 
-            }}>
-              <div>
-                <Title level={2} style={{ margin: 0, color: '#2c3e50' }}>
-                  <TeamOutlined style={{ marginRight: '12px', color: '#667eea' }} />
-                  User Management Portal
-                </Title>
-                <Text style={{ color: '#7f8c8d', fontSize: '16px' }}>
-                  Manage users and their roles in the system
-                </Text>
-              </div>
-              <Button
-                type="primary"
-                size="large"
-                icon={<UserAddOutlined />}
-                onClick={handleCreateUser}
-                style={{
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontWeight: '600'
-                }}
-              >
-                Add New User
-              </Button>
-            </div>
+      <div style={{ marginBottom: '24px' }}>
+        <Title level={2} style={{ margin: 0, color: '#2c3e50' }}>
+          <TeamOutlined style={{ marginRight: '12px', color: '#667eea' }} />
+          Admin Portal
+        </Title>
+        <Text style={{ color: '#7f8c8d', fontSize: '16px' }}>
+          Manage users, database, and system settings
+        </Text>
+      </div>
 
-            <Table
-              dataSource={users}
-              columns={columns}
-              rowKey="id"
-              loading={loading}
-              pagination={{
-                pageSize: 10,
-                showSizeChanger: true,
-                showTotal: (total) => `Total ${total} users`,
-              }}
-              style={{ 
-                backgroundColor: '#ffffff',
-                borderRadius: '8px'
-              }}
-            />
-          </Card>
-        </Col>
-      </Row>
+      <Tabs
+        defaultActiveKey="users"
+        size="large"
+        style={{ background: '#fff', borderRadius: '12px', padding: '20px' }}
+        items={[
+          {
+            key: 'users',
+            label: (
+              <span>
+                <UserOutlined />
+                User Management
+              </span>
+            ),
+            children: (
+              <div>
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center', 
+                  marginBottom: '24px' 
+                }}>
+                  <div>
+                    <Title level={3} style={{ margin: 0, color: '#2c3e50' }}>
+                      User Management
+                    </Title>
+                    <Text style={{ color: '#7f8c8d', fontSize: '14px' }}>
+                      Manage users and their roles in the system
+                    </Text>
+                  </div>
+                  <Button
+                    type="primary"
+                    size="large"
+                    icon={<UserAddOutlined />}
+                    onClick={handleCreateUser}
+                    style={{
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontWeight: '600'
+                    }}
+                  >
+                    Add New User
+                  </Button>
+                </div>
+
+                <Table
+                  dataSource={users}
+                  columns={columns}
+                  rowKey="id"
+                  loading={loading}
+                  pagination={{
+                    pageSize: 10,
+                    showSizeChanger: true,
+                    showTotal: (total) => `Total ${total} users`,
+                  }}
+                  style={{ 
+                    backgroundColor: '#ffffff',
+                    borderRadius: '8px'
+                  }}
+                />
+              </div>
+            )
+          },
+          {
+            key: 'database',
+            label: (
+              <span>
+                <DatabaseOutlined />
+                Database Management
+              </span>
+            ),
+            children: <DatabaseDashboard />
+          }
+        ]}
+      />
 
       <Modal
         title={
