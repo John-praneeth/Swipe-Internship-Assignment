@@ -29,8 +29,11 @@ export const extractTextFromPDF = async (file: File): Promise<string> => {
     
     let fullText = '';
     
-    // Extract text from all pages
-    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+    // Extract text from first 3 pages only (most resumes are 1-2 pages)
+    const maxPages = Math.min(pdf.numPages, 3);
+    console.log(`Processing ${maxPages} pages...`);
+    
+    for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
       const page = await pdf.getPage(pageNum);
       const textContent = await page.getTextContent();
       
@@ -209,7 +212,7 @@ export const parseResumeData = async (file: File): Promise<CandidateInfo> => {
         extractTextFromDOCX(file);
       
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('File processing timeout')), 15000); // 15 second timeout
+        setTimeout(() => reject(new Error('File processing timeout')), 5000); // 5 second timeout
       });
       
       extractedText = await Promise.race([extractionPromise, timeoutPromise]);
