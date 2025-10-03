@@ -2,23 +2,17 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAppSelector, useAppDispatch } from '../store/store';
 import {
   Card,
-  Upload,
   Button,
   Input,
   message,
-  Spin,
   Radio,
   Progress,
 } from 'antd';
 import { 
-  InboxOutlined, 
   SendOutlined,
   PlayCircleOutlined,
-  UploadOutlined,
-  QuestionCircleOutlined,
   CodeOutlined,
 } from '@ant-design/icons';
-import type { UploadProps } from 'antd';
 import {
   createCandidate,
   addChatMessage,
@@ -35,6 +29,7 @@ import {
 import ProjectBasedQuestionGenerator from '../utils/projectBasedQuestionGenerator';
 import ChatMessage from './ChatMessage';
 import InterviewHeader from './InterviewHeader';
+import InterviewWelcome from './InterviewWelcome';
 import './InterviewStyles.css';
 
 // Add pulse animation for timer
@@ -45,8 +40,6 @@ const timerStyles = `
     100% { transform: scale(1); }
   }
 `;
-
-const { Dragger } = Upload;
 
 interface IntervieweeTabProps {
   onNavigateToCoding?: () => void;
@@ -63,7 +56,6 @@ const IntervieweeTab: React.FC<IntervieweeTabProps> = ({ onNavigateToCoding }) =
   } = useAppSelector((state) => state.interview);
   const { currentUser } = useAppSelector((state) => state.auth);
 
-  const [isUploading, setIsUploading] = useState(false);
   const [currentAnswer, setCurrentAnswer] = useState('');
   const [selectedOption, setSelectedOption] = useState<string>('');
   const [timeLeft, setTimeLeft] = useState<number>(0);
@@ -152,27 +144,7 @@ const IntervieweeTab: React.FC<IntervieweeTabProps> = ({ onNavigateToCoding }) =
     console.log('Time spent:', timeSpent);
   };
 
-  const uploadProps: UploadProps = {
-    name: 'file',
-    multiple: false,
-    accept: '.pdf,.docx',
-    beforeUpload: (file) => {
-      const isPDF = file.type === 'application/pdf';
-      const isDOCX = file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-      
-      if (!isPDF && !isDOCX) {
-        message.error('You can only upload PDF or DOCX files!');
-        return false;
-      }
-      
-      handleFileUpload(file);
-      return false;
-    },
-    showUploadList: false,
-  };
-
   const handleFileUpload = async (file: File) => {
-    setIsUploading(true);
     
     // Show processing message
     message.loading({ content: 'Extracting text from resume...', key: 'upload', duration: 0 });
@@ -267,9 +239,6 @@ const IntervieweeTab: React.FC<IntervieweeTabProps> = ({ onNavigateToCoding }) =
           content: 'No worries! Let\'s collect your information. What\'s your full name?',
         }));
       }, 500);
-      
-    } finally {
-      setIsUploading(false);
     }
   };
 
@@ -511,289 +480,7 @@ const IntervieweeTab: React.FC<IntervieweeTabProps> = ({ onNavigateToCoding }) =
   };
 
   if (!currentCandidate) {
-    return (
-      <div style={{ minHeight: '100vh', background: '#f5f7fa', padding: '20px' }}>
-        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-          {/* Header */}
-          <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-            <h1 style={{ fontSize: '36px', color: '#1890ff', marginBottom: '16px', fontWeight: 'bold' }}>
-              AI Interview Platform
-            </h1>
-            <p style={{ fontSize: '20px', color: '#666', marginBottom: '32px' }}>
-              Get personalized interview questions based on your resume
-            </p>
-            
-            {/* Prominent Start Button */}
-            <div style={{
-              background: 'linear-gradient(135deg, #1890ff 0%, #40a9ff 100%)',
-              padding: '32px',
-              borderRadius: '16px',
-              boxShadow: '0 12px 40px rgba(24, 144, 255, 0.3)',
-              marginBottom: '20px'
-            }}>
-              <div style={{ marginBottom: '20px' }}>
-                <div style={{
-                  width: '64px',
-                  height: '64px',
-                  borderRadius: '50%',
-                  background: 'rgba(255, 255, 255, 0.2)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 16px',
-                  backdropFilter: 'blur(10px)'
-                }}>
-                  <PlayCircleOutlined style={{ fontSize: '28px', color: 'white' }} />
-                </div>
-                <h2 style={{ 
-                  color: 'white', 
-                  fontSize: '24px', 
-                  fontWeight: 'bold',
-                  marginBottom: '8px'
-                }}>
-                  Ready to Start Your AI Interview?
-                </h2>
-                <p style={{ 
-                  color: 'rgba(255, 255, 255, 0.9)', 
-                  fontSize: '16px',
-                  marginBottom: '0',
-                  lineHeight: '1.5'
-                }}>
-                  Upload your resume and get personalized questions in minutes
-                </p>
-              </div>
-              
-              <Button
-                type="default"
-                size="large"
-                icon={<UploadOutlined />}
-                onClick={() => {
-                  // Scroll to upload section
-                  const uploadSection = document.querySelector('[data-upload-section]');
-                  if (uploadSection) {
-                    uploadSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                  }
-                }}
-                style={{ 
-                  height: '56px',
-                  fontSize: '18px',
-                  fontWeight: 'bold',
-                  minWidth: '250px',
-                  borderRadius: '8px',
-                  background: 'white',
-                  color: '#1890ff',
-                  border: 'none',
-                  boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)'
-                }}
-              >
-                Start Interview Process
-              </Button>
-            </div>
-          </div>
-
-          {/* How It Works Section */}
-          <Card style={{ 
-            marginBottom: '40px', 
-            boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-            border: '1px solid #e8f4fd'
-          }}>
-            <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-              <h2 style={{ fontSize: '28px', color: '#1890ff', marginBottom: '16px', fontWeight: 'bold' }}>
-                How It Works
-              </h2>
-              <p style={{ fontSize: '16px', color: '#666' }}>
-                Our AI-powered interview process is simple and personalized
-              </p>
-            </div>
-
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-              gap: '30px',
-              marginBottom: '20px'
-            }}>
-              {/* Step 1 */}
-              <div style={{ textAlign: 'center' }}>
-                <div style={{
-                  width: '80px',
-                  height: '80px',
-                  borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #1890ff 0%, #40a9ff 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 20px',
-                  boxShadow: '0 8px 25px rgba(24, 144, 255, 0.3)'
-                }}>
-                  <UploadOutlined style={{ fontSize: '32px', color: 'white' }} />
-                </div>
-                <h3 style={{ fontSize: '18px', color: '#262626', marginBottom: '12px', fontWeight: 'bold' }}>
-                  1. Upload Resume
-                </h3>
-                <p style={{ fontSize: '14px', color: '#666', lineHeight: '1.6' }}>
-                  Provide your PDF or DOCX resume file
-                </p>
-              </div>
-
-              {/* Step 2 */}
-              <div style={{ textAlign: 'center' }}>
-                <div style={{
-                  width: '80px',
-                  height: '80px',
-                  borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #52c41a 0%, #73d13d 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 20px',
-                  boxShadow: '0 8px 25px rgba(82, 196, 26, 0.3)'
-                }}>
-                  <div style={{ fontSize: '32px', color: 'white' }}>🤖</div>
-                </div>
-                <h3 style={{ fontSize: '18px', color: '#262626', marginBottom: '12px', fontWeight: 'bold' }}>
-                  2. We Analyze
-                </h3>
-                <p style={{ fontSize: '14px', color: '#666', lineHeight: '1.6' }}>
-                  Our AI extracts your skills, projects, and experience
-                </p>
-              </div>
-
-              {/* Step 3 */}
-              <div style={{ textAlign: 'center' }}>
-                <div style={{
-                  width: '80px',
-                  height: '80px',
-                  borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #faad14 0%, #ffc53d 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 20px',
-                  boxShadow: '0 8px 25px rgba(250, 173, 20, 0.3)'
-                }}>
-                  <QuestionCircleOutlined style={{ fontSize: '32px', color: 'white' }} />
-                </div>
-                <h3 style={{ fontSize: '18px', color: '#262626', marginBottom: '12px', fontWeight: 'bold' }}>
-                  3. Personalized Questions
-                </h3>
-                <p style={{ fontSize: '14px', color: '#666', lineHeight: '1.6' }}>
-                  Based on your resume, we create custom interview questions
-                </p>
-              </div>
-
-              {/* Step 4 */}
-              <div style={{ textAlign: 'center' }}>
-                <div style={{
-                  width: '80px',
-                  height: '80px',
-                  borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #722ed1 0%, #9254de 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 20px',
-                  boxShadow: '0 8px 25px rgba(114, 46, 209, 0.3)'
-                }}>
-                  <PlayCircleOutlined style={{ fontSize: '32px', color: 'white' }} />
-                </div>
-                <h3 style={{ fontSize: '18px', color: '#262626', marginBottom: '12px', fontWeight: 'bold' }}>
-                  4. Start Interview
-                </h3>
-                <p style={{ fontSize: '14px', color: '#666', lineHeight: '1.6' }}>
-                  Begin your interview with tailored questions
-                </p>
-              </div>
-            </div>
-          </Card>
-
-          {/* Upload Section */}
-          <Card 
-            data-upload-section
-            title={
-              <div style={{ textAlign: 'center' }}>
-                <h2 style={{ margin: 0, color: '#1890ff', fontSize: '24px', fontWeight: 'bold' }}>
-                  Upload Your Resume to Get Started
-                </h2>
-                <p style={{ margin: '8px 0 0', color: '#666', fontSize: '16px' }}>
-                  Drag and drop your resume or click to browse
-                </p>
-              </div>
-            } 
-            style={{ 
-              boxShadow: '0 8px 30px rgba(0,0,0,0.1)',
-              border: '2px solid #e8f4fd'
-            }}
-          >
-            <Spin spinning={isUploading} tip="Processing your resume...">
-              <Dragger {...uploadProps} style={{ 
-                padding: 40, 
-                marginBottom: 30,
-                border: '2px dashed #1890ff',
-                borderRadius: '12px',
-                background: '#fafcff'
-              }}>
-                <p className="ant-upload-drag-icon">
-                  <InboxOutlined style={{ fontSize: 72, color: '#1890ff' }} />
-                </p>
-                <p className="ant-upload-text" style={{ 
-                  fontSize: '20px', 
-                  fontWeight: 'bold',
-                  color: '#262626',
-                  marginBottom: '12px'
-                }}>
-                  Click or drag your resume file to this area to upload
-                </p>
-                <p className="ant-upload-hint" style={{ 
-                  fontSize: '16px',
-                  color: '#666',
-                  lineHeight: '1.6'
-                }}>
-                  Support for PDF and DOCX files only. We'll extract your information and create personalized questions tailored to your background and experience.
-                </p>
-              </Dragger>
-              
-              <div style={{ textAlign: 'center' }}>
-                <Button
-                  type="primary"
-                  size="large"
-                  icon={<UploadOutlined />}
-                  onClick={triggerFileUpload}
-                  style={{ 
-                    height: '56px',
-                    fontSize: '18px',
-                    fontWeight: 'bold',
-                    minWidth: '250px',
-                    borderRadius: '8px',
-                    boxShadow: '0 6px 20px rgba(24, 144, 255, 0.4)'
-                  }}
-                >
-                  Choose Resume File
-                </Button>
-              </div>
-            </Spin>
-          </Card>
-
-          {/* Additional Info */}
-          <div style={{ 
-            textAlign: 'center', 
-            marginTop: '30px',
-            padding: '20px',
-            background: '#f0f8ff',
-            borderRadius: '8px',
-            border: '1px solid #e8f4fd'
-          }}>
-            <p style={{ 
-              fontSize: '14px', 
-              color: '#666', 
-              margin: 0,
-              lineHeight: '1.6'
-            }}>
-              <strong>Privacy Note:</strong> Your resume is processed locally and securely. We extract only the information needed to create personalized interview questions.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
+    return <InterviewWelcome onUploadResume={triggerFileUpload} />;
   }
 
   return (

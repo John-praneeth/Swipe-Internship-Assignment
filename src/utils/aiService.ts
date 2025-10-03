@@ -253,11 +253,11 @@ export const generateQuestions = (): Question[] => {
     ]
   };
 
-  // Randomly select 2 questions from each difficulty level
+  // Randomly select 5 questions from each difficulty level (15 total)
   const selectedQuestions = [
-    ...shuffleArray(questionPools.easy).slice(0, 2),
-    ...shuffleArray(questionPools.medium).slice(0, 2),
-    ...shuffleArray(questionPools.hard).slice(0, 2),
+    ...shuffleArray(questionPools.easy).slice(0, 5),
+    ...shuffleArray(questionPools.medium).slice(0, 5),
+    ...shuffleArray(questionPools.hard).slice(0, 5),
   ];
 
   return selectedQuestions;
