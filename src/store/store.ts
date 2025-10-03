@@ -7,14 +7,39 @@ import authReducer from './authSlice';
 
 const persistConfig = {
   key: 'root',
+  version: 1,
   storage,
   whitelist: ['candidates', 'currentCandidate'], // Only persist these fields
+  migrate: (state: any) => {
+    // Handle migration and corrupted state
+    try {
+      if (state && state._persist) {
+        return Promise.resolve(state);
+      }
+      return Promise.resolve(state);
+    } catch (error) {
+      console.error('Migration error, clearing state:', error);
+      return Promise.resolve(undefined);
+    }
+  },
 };
 
 const authPersistConfig = {
   key: 'auth',
+  version: 1,
   storage,
   whitelist: ['currentUser', 'isAuthenticated'], // Persist auth state
+  migrate: (state: any) => {
+    try {
+      if (state && state._persist) {
+        return Promise.resolve(state);
+      }
+      return Promise.resolve(state);
+    } catch (error) {
+      console.error('Auth migration error, clearing state:', error);
+      return Promise.resolve(undefined);
+    }
+  },
 };
 
 const persistedInterviewReducer = persistReducer(persistConfig, interviewReducer);

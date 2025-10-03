@@ -7,6 +7,20 @@ import { store, persistor } from './store/store'
 import App from './App'
 import './index.css'
 
+// Check for corrupted localStorage and clear if needed
+try {
+  const testKey = '__storage_test__';
+  localStorage.setItem(testKey, 'test');
+  localStorage.removeItem(testKey);
+} catch (error) {
+  console.error('localStorage is not available or corrupted:', error);
+  try {
+    localStorage.clear();
+  } catch (e) {
+    console.error('Could not clear localStorage:', e);
+  }
+}
+
 const rootElement = document.getElementById('root');
 
 if (!rootElement) {
